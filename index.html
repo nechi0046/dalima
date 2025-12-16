@@ -1,14 +1,124 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>dalima 注文カウンター</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>dalima 注文カウンター</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background:#f7f7f7;
+  padding:16px;
+}
+details {
+  background:#fff;
+  border-radius:10px;
+  margin-bottom:10px;
+  padding:10px;
+}
+summary {
+  font-weight:bold;
+  font-size:18px;
+}
+.item {
+  padding:8px 0;
+  border-bottom:1px solid #eee;
+}
+.sub {
+  font-size:14px;
+  color:#666;
+}
+button {
+  font-size:18px;
+  padding:4px 10px;
+  margin:0 6px;
+}
+.count {
+  font-weight:bold;
+  margin-left:4px;
+}
+</style>
 </head>
 <body>
 
 <h1>🍴 dalima 注文カウンター</h1>
-<p>最初のページが表示されています</p>
+<div id="app"></div>
+
+<script>
+const menu = [
+  ["ドリンクメニュー","ビール","生","ザ・プレミアム・モルツ","¥499"],
+  ["ドリンクメニュー","ビール","生","カレーセットに追加の生ビール","¥300"],
+  ["ドリンクメニュー","ビール","ボトル","キリンラガー","¥600"],
+  ["ドリンクメニュー","ビール","ボトル","サッポロエビス","¥600"],
+  ["カレー","チキンカレー","","バターチキンカレー","¥880"],
+  ["カレー","チキンカレー","","チキンカレー","¥850"],
+  ["ナン","","","プレーンナン","¥250"],
+  ["ナン","","","チーズナン","¥500"]
+];
+
+// グループ化
+const tree = {};
+menu.forEach(([big, mid, small, name, price]) => {
+  tree[big] ??= {};
+  tree[big][mid] ??= {};
+  tree[big][mid][small] ??= [];
+  tree[big][mid][small].push({name, price});
+});
+
+const app = document.getElementById("app");
+
+Object.entries(tree).forEach(([big, mids]) => {
+  const bigD = document.createElement("details");
+  bigD.innerHTML = `<summary>${big}</summary>`;
+
+  Object.entries(mids).forEach(([mid, smalls]) => {
+    const midD = document.createElement("details");
+    midD.innerHTML = `<summary>${mid || "その他"}</summary>`;
+
+    Object.entries(smalls).forEach(([small, items]) => {
+      if (small) {
+        const p = document.createElement("div");
+        p.className="sub";
+        p.textContent = small;
+        midD.appendChild(p);
+      }
+
+      items.forEach(item => {
+        const key = item.name;
+        let cnt = Number(localStorage.getItem(key)) || 0;
+
+        const div = document.createElement("div");
+        div.className="item";
+        div.innerHTML = `
+          <button>＋</button>
+          <span>${item.name} ${item.price}</span>
+          <span class="count">${cnt}</span>
+          <button>－</button>
+        `;
+
+        const [plus, , countEl, minus] = div.children;
+
+        plus.onclick = () => {
+          cnt++;
+          countEl.textContent = cnt;
+          localStorage.setItem(key,cnt);
+        };
+        minus.onclick = () => {
+          if (cnt>0) cnt--;
+          countEl.textContent = cnt;
+          localStorage.setItem(key,cnt);
+        };
+
+        midD.appendChild(div);
+      });
+    });
+
+    bigD.appendChild(midD);
+  });
+
+  app.appendChild(bigD);
+});
+</script>
 
 </body>
 </html>
