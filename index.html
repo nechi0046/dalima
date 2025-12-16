@@ -4,11 +4,13 @@
 <meta charset="UTF-8">
 <title>ダリマ注文カウンター</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
 body{
   margin:0;
   background:#FFF6D5;
   font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+  padding-bottom:90px;
 }
 header{
   text-align:center;
@@ -17,24 +19,23 @@ header{
 h1{margin:0;font-size:22px;}
 .subttl{font-size:14px;color:#555;}
 
-.section{
+.card{
   background:#fff;
   margin:10px;
   padding:10px;
   border-radius:14px;
 }
 
-.cat{
+summary{
   font-weight:bold;
   font-size:18px;
-  margin:12px 0 4px;
   color:#E4572E;
 }
+
 .subcat{
   font-weight:bold;
-  font-size:15px;
   margin-top:8px;
-  color:#333;
+  font-size:15px;
 }
 
 .item{
@@ -52,23 +53,34 @@ h1{margin:0;font-size:22px;}
 button{
   border:none;
   border-radius:50%;
-  width:32px;height:32px;
+  width:34px;height:34px;
   background:#F4A300;
   color:#fff;
   font-size:18px;
 }
-.count{width:24px;text-align:center;}
+.count{
+  width:24px;
+  text-align:center;
+}
 
-#confirm{
+#confirmBar{
   position:fixed;
-  right:16px;
-  bottom:16px;
+  bottom:0;
+  left:0;
+  right:0;
   background:#E4572E;
-  color:#fff;
-  padding:14px 20px;
-  border-radius:30px;
+  padding:12px;
   display:none;
 }
+#confirmBar button{
+  width:100%;
+  border-radius:30px;
+  height:48px;
+  font-size:18px;
+  background:#fff;
+  color:#E4572E;
+}
+
 .reset{
   width:100%;
   background:#999;
@@ -78,119 +90,139 @@ button{
 }
 </style>
 </head>
+
 <body>
 
 <header>
-<h1>ダリマ注文カウンター</h1>
-<div class="subttl">チーム友達専用</div>
+  <h1>ダリマ注文カウンター</h1>
+  <div class="subttl">チーム友達専用</div>
 </header>
 
-<div class="section">
+<div class="card">
 <details>
-<summary><b>確定した注文履歴</b></summary>
+<summary>確定した注文履歴</summary>
 <div id="history"></div>
+<div id="total"></div>
 </details>
 </div>
 
-<div class="section" id="menu"></div>
+<div id="menu"></div>
 
-<button id="confirm" onclick="confirmOrder()">確定する</button>
+<div id="confirmBar">
+<button onclick="confirmOrder()">注文を確定する</button>
+</div>
 
-<div class="section">
+<div class="card">
 <button class="reset" onclick="resetAll()">リセット</button>
 </div>
 
 <script>
-const menuData = [
-["ドリンクメニュー","ビール","生","ザ・プレミアム・モルツ","¥499"],
-["ドリンクメニュー","ビール","生","カレーセットに追加の生ビール","¥300"],
-["ドリンクメニュー","ビール","ボトル","キリンラガー","¥600"],
-["ドリンクメニュー","ビール","ボトル","サッポロエビス","¥600"],
-["ドリンクメニュー","ビール","ボトル","アサヒスーパードライ","¥600"],
-["ドリンクメニュー","ビール","世界のビール","ネパール シンハー タイガー","¥600"],
-["ドリンクメニュー","ビール","世界のビール","コロナ","¥600"],
-["ドリンクメニュー","ビール","ビールカクテル","マンゴービール","¥499"],
-["ドリンクメニュー","ビール","ビールカクテル","シャンディガフ","¥499"],
-["ドリンクメニュー","ビール","ビールカクテル","レッドアイ","¥499"],
+const STORAGE_KEY="darima_orders";
 
-["カレー","チキンカレー","","バターチキンカレー","¥880"],
-["カレー","チキンカレー","","チキンカレー","¥850"],
-["カレー","マトンカレー","","マトンカレー","¥800"],
-["カレー","野菜カレー","","ベジタブルカレー","¥800"],
+const menuData=[
+["ドリンクメニュー","ビール","生","ザ・プレミアム・モルツ",499],
+["ドリンクメニュー","ビール","生","カレーセットに追加の生ビール",300],
+["ドリンクメニュー","ビール","ボトル","キリンラガー",600],
+["ドリンクメニュー","ビール","ボトル","サッポロエビス",600],
+["ドリンクメニュー","ビール","ボトル","アサヒスーパードライ",600],
+["ドリンクメニュー","ビール","世界のビール","コロナ",600],
 
-["ナン","","","プレーンナン","¥250"],
-["ナン","","","チーズナン","¥500"],
-["ナン","","","ガーリックナン","¥350"],
+["カレー","チキンカレー","","バターチキンカレー",880],
+["カレー","チキンカレー","","チキンカレー",850],
+["カレー","マトンカレー","","マトンカレー",800],
+["カレー","野菜カレー","","ベジタブルカレー",800],
 
-["アジアンメニュー","","","トムヤムクン","¥700"],
-["アジアンメニュー","","","グリーンカレー","¥850"]
+["ナン","","","プレーンナン",250],
+["ナン","","","チーズナン",500],
+["ナン","","","ガーリックナン",350]
 ];
 
 let temp={}, fixed={};
 
+// 保存データ読み込み
+const saved=localStorage.getItem(STORAGE_KEY);
+if(saved) fixed=JSON.parse(saved);
+
 function renderMenu(){
  const root=document.getElementById("menu");
  root.innerHTML="";
- let lastCat="", lastSub="";
 
- menuData.forEach(([cat,sub,desc,name,price])=>{
-  if(cat!==lastCat){
-    root.innerHTML+=`<div class="cat">${cat}</div>`;
-    lastCat=cat; lastSub="";
-  }
-  if(sub && sub!==lastSub){
-    root.innerHTML+=`<div class="subcat">${sub}</div>`;
-    lastSub=sub;
-  }
+ const grouped={};
+ menuData.forEach(m=>{
+  if(!grouped[m[0]]) grouped[m[0]]=[];
+  grouped[m[0]].push(m);
+ });
 
-  const cnt=temp[name]||0;
-  root.innerHTML+=`
-  <div class="item">
+ Object.keys(grouped).forEach(cat=>{
+  const d=document.createElement("details");
+  d.className="card";
+  d.innerHTML=`<summary>${cat}</summary>`;
+  let lastSub="";
+  grouped[cat].forEach(([_,sub,desc,name,price])=>{
+   if(sub && sub!==lastSub){
+     d.innerHTML+=`<div class="subcat">${sub}</div>`;
+     lastSub=sub;
+   }
+   const c=temp[name]||0;
+   d.innerHTML+=`
+   <div class="item">
     <div class="info">
       ${name}
       ${desc?`<div class="desc">${desc}</div>`:""}
-      <div class="price">${price}</div>
+      <div class="price">¥${price}</div>
     </div>
-    <button onclick="chg('${name}',1)">＋</button>
-    <span class="count">${cnt}</span>
-    <button onclick="chg('${name}',-1)">－</button>
-  </div>`;
+    <button onclick="chg('${name}',${price},1)">＋</button>
+    <span class="count">${c}</span>
+    <button onclick="chg('${name}',${price},-1)">－</button>
+   </div>`;
+  });
+  root.appendChild(d);
  });
 }
 
-function chg(n,v){
- temp[n]=(temp[n]||0)+v;
- if(temp[n]<=0) delete temp[n];
- document.getElementById("confirm").style.display="block";
+function chg(name,price,val){
+ if(!temp[name]) temp[name]={count:0,price};
+ temp[name].count+=val;
+ if(temp[name].count<=0) delete temp[name];
+ document.getElementById("confirmBar").style.display="block";
  renderMenu();
 }
 
 function confirmOrder(){
- Object.entries(temp).forEach(([n,c])=>{
-  fixed[n]=(fixed[n]||0)+c;
+ Object.entries(temp).forEach(([n,v])=>{
+  if(!fixed[n]) fixed[n]={count:0,price:v.price};
+  fixed[n].count+=v.count;
  });
  temp={};
+ localStorage.setItem(STORAGE_KEY,JSON.stringify(fixed));
+ document.getElementById("confirmBar").style.display="none";
  renderHistory();
- document.getElementById("confirm").style.display="none";
  renderMenu();
 }
 
 function renderHistory(){
  const h=document.getElementById("history");
+ const t=document.getElementById("total");
  h.innerHTML="";
- Object.entries(fixed).forEach(([n,c])=>{
-  h.innerHTML+=`${n} × ${c}<br>`;
+ let sum=0;
+ Object.entries(fixed).forEach(([n,v])=>{
+  const sub=v.count*v.price;
+  sum+=sub;
+  h.innerHTML+=`${n} × ${v.count}　¥${sub}<br>`;
  });
+ t.innerHTML=sum?`<b>合計：¥${sum}</b>`:"";
 }
 
 function resetAll(){
  if(confirm("本当にリセットしますか？")){
   temp={};fixed={};
+  localStorage.removeItem(STORAGE_KEY);
   renderMenu();renderHistory();
  }
 }
 
 renderMenu();
+renderHistory();
 </script>
 
 </body>
