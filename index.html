@@ -2,122 +2,195 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>dalima 注文カウンター</title>
+<title>ダリマ注文カウンター</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body {
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  background:#f7f7f7;
+body{
+  margin:0;
+  background:#FFF6D5;
+  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+}
+header{
+  text-align:center;
   padding:16px;
 }
-details {
+h1{margin:0;font-size:22px;}
+.subttl{font-size:14px;color:#555;}
+
+.section{
   background:#fff;
-  border-radius:10px;
-  margin-bottom:10px;
+  margin:10px;
   padding:10px;
+  border-radius:14px;
 }
-summary {
+
+.cat{
   font-weight:bold;
   font-size:18px;
+  margin:12px 0 4px;
+  color:#E4572E;
 }
-.item {
-  padding:8px 0;
+.subcat{
+  font-weight:bold;
+  font-size:15px;
+  margin-top:8px;
+  color:#333;
+}
+
+.item{
+  display:flex;
+  align-items:center;
   border-bottom:1px solid #eee;
+  padding:6px 0;
 }
-.sub {
-  font-size:14px;
-  color:#666;
-}
-button {
+.item:last-child{border:none;}
+
+.info{flex:1;}
+.desc{font-size:12px;color:#777;}
+.price{font-size:13px;color:#777;}
+
+button{
+  border:none;
+  border-radius:50%;
+  width:32px;height:32px;
+  background:#F4A300;
+  color:#fff;
   font-size:18px;
-  padding:4px 10px;
-  margin:0 6px;
 }
-.count {
-  font-weight:bold;
-  margin-left:4px;
+.count{width:24px;text-align:center;}
+
+#confirm{
+  position:fixed;
+  right:16px;
+  bottom:16px;
+  background:#E4572E;
+  color:#fff;
+  padding:14px 20px;
+  border-radius:30px;
+  display:none;
+}
+.reset{
+  width:100%;
+  background:#999;
+  color:#fff;
+  border-radius:10px;
+  padding:10px;
 }
 </style>
 </head>
 <body>
 
-<h1>🍴 dalima 注文カウンター</h1>
-<div id="app"></div>
+<header>
+<h1>ダリマ注文カウンター</h1>
+<div class="subttl">チーム友達専用</div>
+</header>
+
+<div class="section">
+<details>
+<summary><b>確定した注文履歴</b></summary>
+<div id="history"></div>
+</details>
+</div>
+
+<div class="section" id="menu"></div>
+
+<button id="confirm" onclick="confirmOrder()">確定する</button>
+
+<div class="section">
+<button class="reset" onclick="resetAll()">リセット</button>
+</div>
 
 <script>
-const menu = [
-  ["ドリンクメニュー","ビール","生","ザ・プレミアム・モルツ","¥499"],
-  ["ドリンクメニュー","ビール","生","カレーセットに追加の生ビール","¥300"],
-  ["ドリンクメニュー","ビール","ボトル","キリンラガー","¥600"],
-  ["ドリンクメニュー","ビール","ボトル","サッポロエビス","¥600"],
-  ["カレー","チキンカレー","","バターチキンカレー","¥880"],
-  ["カレー","チキンカレー","","チキンカレー","¥850"],
-  ["ナン","","","プレーンナン","¥250"],
-  ["ナン","","","チーズナン","¥500"]
+const menuData = [
+["ドリンクメニュー","ビール","生","ザ・プレミアム・モルツ","¥499"],
+["ドリンクメニュー","ビール","生","カレーセットに追加の生ビール","¥300"],
+["ドリンクメニュー","ビール","ボトル","キリンラガー","¥600"],
+["ドリンクメニュー","ビール","ボトル","サッポロエビス","¥600"],
+["ドリンクメニュー","ビール","ボトル","アサヒスーパードライ","¥600"],
+["ドリンクメニュー","ビール","世界のビール","ネパール シンハー タイガー","¥600"],
+["ドリンクメニュー","ビール","世界のビール","コロナ","¥600"],
+["ドリンクメニュー","ビール","ビールカクテル","マンゴービール","¥499"],
+["ドリンクメニュー","ビール","ビールカクテル","シャンディガフ","¥499"],
+["ドリンクメニュー","ビール","ビールカクテル","レッドアイ","¥499"],
+
+["カレー","チキンカレー","","バターチキンカレー","¥880"],
+["カレー","チキンカレー","","チキンカレー","¥850"],
+["カレー","マトンカレー","","マトンカレー","¥800"],
+["カレー","野菜カレー","","ベジタブルカレー","¥800"],
+
+["ナン","","","プレーンナン","¥250"],
+["ナン","","","チーズナン","¥500"],
+["ナン","","","ガーリックナン","¥350"],
+
+["アジアンメニュー","","","トムヤムクン","¥700"],
+["アジアンメニュー","","","グリーンカレー","¥850"]
 ];
 
-// グループ化
-const tree = {};
-menu.forEach(([big, mid, small, name, price]) => {
-  tree[big] ??= {};
-  tree[big][mid] ??= {};
-  tree[big][mid][small] ??= [];
-  tree[big][mid][small].push({name, price});
-});
+let temp={}, fixed={};
 
-const app = document.getElementById("app");
+function renderMenu(){
+ const root=document.getElementById("menu");
+ root.innerHTML="";
+ let lastCat="", lastSub="";
 
-Object.entries(tree).forEach(([big, mids]) => {
-  const bigD = document.createElement("details");
-  bigD.innerHTML = `<summary>${big}</summary>`;
+ menuData.forEach(([cat,sub,desc,name,price])=>{
+  if(cat!==lastCat){
+    root.innerHTML+=`<div class="cat">${cat}</div>`;
+    lastCat=cat; lastSub="";
+  }
+  if(sub && sub!==lastSub){
+    root.innerHTML+=`<div class="subcat">${sub}</div>`;
+    lastSub=sub;
+  }
 
-  Object.entries(mids).forEach(([mid, smalls]) => {
-    const midD = document.createElement("details");
-    midD.innerHTML = `<summary>${mid || "その他"}</summary>`;
+  const cnt=temp[name]||0;
+  root.innerHTML+=`
+  <div class="item">
+    <div class="info">
+      ${name}
+      ${desc?`<div class="desc">${desc}</div>`:""}
+      <div class="price">${price}</div>
+    </div>
+    <button onclick="chg('${name}',1)">＋</button>
+    <span class="count">${cnt}</span>
+    <button onclick="chg('${name}',-1)">－</button>
+  </div>`;
+ });
+}
 
-    Object.entries(smalls).forEach(([small, items]) => {
-      if (small) {
-        const p = document.createElement("div");
-        p.className="sub";
-        p.textContent = small;
-        midD.appendChild(p);
-      }
+function chg(n,v){
+ temp[n]=(temp[n]||0)+v;
+ if(temp[n]<=0) delete temp[n];
+ document.getElementById("confirm").style.display="block";
+ renderMenu();
+}
 
-      items.forEach(item => {
-        const key = item.name;
-        let cnt = Number(localStorage.getItem(key)) || 0;
+function confirmOrder(){
+ Object.entries(temp).forEach(([n,c])=>{
+  fixed[n]=(fixed[n]||0)+c;
+ });
+ temp={};
+ renderHistory();
+ document.getElementById("confirm").style.display="none";
+ renderMenu();
+}
 
-        const div = document.createElement("div");
-        div.className="item";
-        div.innerHTML = `
-          <button>＋</button>
-          <span>${item.name} ${item.price}</span>
-          <span class="count">${cnt}</span>
-          <button>－</button>
-        `;
+function renderHistory(){
+ const h=document.getElementById("history");
+ h.innerHTML="";
+ Object.entries(fixed).forEach(([n,c])=>{
+  h.innerHTML+=`${n} × ${c}<br>`;
+ });
+}
 
-        const [plus, , countEl, minus] = div.children;
+function resetAll(){
+ if(confirm("本当にリセットしますか？")){
+  temp={};fixed={};
+  renderMenu();renderHistory();
+ }
+}
 
-        plus.onclick = () => {
-          cnt++;
-          countEl.textContent = cnt;
-          localStorage.setItem(key,cnt);
-        };
-        minus.onclick = () => {
-          if (cnt>0) cnt--;
-          countEl.textContent = cnt;
-          localStorage.setItem(key,cnt);
-        };
-
-        midD.appendChild(div);
-      });
-    });
-
-    bigD.appendChild(midD);
-  });
-
-  app.appendChild(bigD);
-});
+renderMenu();
 </script>
 
 </body>
