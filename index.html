@@ -164,6 +164,33 @@
             margin-top: 0;
         }
 
+        /* --- 注文履歴の折りたたみスタイル --- */
+        #history-header {
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #history-toggle-icon {
+            font-size: 1.5rem;
+            font-weight: normal;
+            color: var(--accent-color);
+            line-height: 1;
+            padding-bottom: 3px;
+        }
+        #history-content {
+            max-height: 1000px; /* 十分な高さ (展開時) */
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
+            padding-top: 10px;
+        }
+        #history-section.collapsed #history-content {
+            max-height: 0;
+            padding-top: 0;
+        }
+        /* --- 注文履歴の折りたたみスタイル END --- */
+
+
         /* 注文履歴リスト */
         .history-list {
             list-style: none;
@@ -219,7 +246,7 @@
         }
 
         .btn-checkout {
-            background-color: #555; /* 誤操作防止のため少し地味に、あるいは警告色 */
+            background-color: #555;
             color: white;
             font-size: 1rem;
             padding: 12px;
@@ -512,19 +539,24 @@
     <div id="main-view" class="view-section active">
         
         <div class="section" id="history-section">
-            <h2>現在の注文履歴</h2>
-            <ul class="history-list" id="history-list">
-                <li style="text-align:center; color:#999; padding:20px;">履歴はありません</li>
-            </ul>
-            <div class="total-price" id="grand-total">合計: ¥0</div>
+            <h2 id="history-header">
+                現在の注文履歴 <span id="history-toggle-icon">−</span>
+            </h2>
+            
+            <div id="history-content">
+                <ul class="history-list" id="history-list">
+                    <li style="text-align:center; color:#999; padding:20px;">履歴はありません</li>
+                </ul>
+                <div class="total-price" id="grand-total">合計: ¥0</div>
 
-            <div class="action-buttons">
-                <button class="btn btn-share" onclick="shareOrder()">
-                    LINEで共有 / テキストをコピー
-                </button>
-                <button class="btn btn-checkout" onclick="checkoutOrder()">
-                    会計済（履歴に保存してリセット）
-                </button>
+                <div class="action-buttons">
+                    <button class="btn btn-share" onclick="shareOrder()">
+                        LINEで共有 / テキストをコピー
+                    </button>
+                    <button class="btn btn-checkout" onclick="checkoutOrder()">
+                        会計済（履歴に保存してリセット）
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -576,7 +608,7 @@
 
 <script>
     /**
-     * CSVデータ
+     * CSVデータ (前回から変更なし)
      */
     const RAW_MENU_DATA = [
         // ドリンク
@@ -754,16 +786,36 @@
         {l:"ナン", m:"", s:"", n:"キーマポテトナン", p:550},
     ];
 
-    let orders = {}; // { menu-id: quantity }
-    let manualOrders = []; // [{id, name, price, quantity}]
-    let pastOrders = []; // 保存された過去の注文履歴
+    let orders = {};
+    let manualOrders = [];
+    let pastOrders = [];
 
     window.onload = function() {
         renderMenu();
         loadData();
+        
+        // --- 注文履歴の折りたたみ機能初期化 ---
+        document.getElementById('history-header').addEventListener('click', toggleHistoryCollapse);
+        // 最初は展開しておく (初期クラス設定により)
+        // itemsがなければ最初から折りたたんでおくロジックも追加可能だが、今回は展開でスタート
+        // ------------------------------------
     };
 
-    /* --- メニュー・画面制御 --- */
+    /* --- 画面・メニュー制御 --- */
+    
+    function toggleHistoryCollapse() {
+        const historySection = document.getElementById('history-section');
+        const icon = document.getElementById('history-toggle-icon');
+        
+        if (historySection.classList.contains('collapsed')) {
+            historySection.classList.remove('collapsed');
+            icon.textContent = '−'; // マイナス
+        } else {
+            historySection.classList.add('collapsed');
+            icon.textContent = '+'; // プラス
+        }
+    }
+    
     function toggleMenu() {
         document.getElementById('side-menu').classList.toggle('active');
         document.getElementById('side-menu-overlay').classList.toggle('active');
@@ -772,19 +824,18 @@
     function showMainView() {
         document.getElementById('main-view').classList.add('active');
         document.getElementById('past-view').classList.remove('active');
-        document.getElementById('fab-confirm').style.display = 'flex'; // 確定ボタン表示
+        document.getElementById('fab-confirm').style.display = 'flex';
         window.scrollTo(0, 0);
     }
 
     function showHistoryView() {
         document.getElementById('main-view').classList.remove('active');
         document.getElementById('past-view').classList.add('active');
-        document.getElementById('fab-confirm').style.display = 'none'; // 確定ボタン非表示
+        document.getElementById('fab-confirm').style.display = 'none';
         renderPastOrders();
         window.scrollTo(0, 0);
     }
 
-    /* --- データ処理 --- */
     function renderMenu() {
         const container = document.getElementById('menu-container');
         container.innerHTML = '';
@@ -1023,7 +1074,7 @@
         orders = {};
         manualOrders = [];
         
-        saveData(); // 保存（過去履歴含む）
+        saveData();
         
         // UIリセット
         document.querySelectorAll('.item-count').forEach(el => el.textContent = '0');
