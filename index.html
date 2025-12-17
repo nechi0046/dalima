@@ -1,228 +1,978 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>ダリマ注文カウンター</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ダリマ注文カウンター</title>
+    <style>
+        :root {
+            --primary-color: #FF9800; /* オレンジ */
+            --primary-light: #FFB74D;
+            --accent-color: #F57C00;
+            --confirm-color: #D32F2F; /* 確定ボタンの赤 */
+            --bg-color: #FFFDE7; /* 優しい黄色 */
+            --text-color: #333;
+            --white: #ffffff;
+            --gray-light: #f5f5f5;
+            --shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
 
-<style>
-body{
-  margin:0;
-  background:#FFF6D5;
-  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-  padding-bottom:90px;
-}
-header{
-  text-align:center;
-  padding:16px;
-}
-h1{margin:0;font-size:22px;}
-.subttl{font-size:14px;color:#555;}
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-.card{
-  background:#fff;
-  margin:10px;
-  padding:10px;
-  border-radius:14px;
-}
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Yu Gothic", YuGothic, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0 0 100px 0; /* 下部にボタン用スペース */
+        }
 
-summary{
-  font-weight:bold;
-  font-size:18px;
-  color:#E4572E;
-}
+        /* ヘッダー */
+        header {
+            background-color: var(--primary-color);
+            color: var(--white);
+            padding: 15px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
 
-.subcat{
-  font-weight:bold;
-  margin-top:8px;
-  font-size:15px;
-}
+        .header-sub {
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
 
-.item{
-  display:flex;
-  align-items:center;
-  border-bottom:1px solid #eee;
-  padding:6px 0;
-}
-.item:last-child{border:none;}
+        .header-main {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-top: 5px;
+        }
 
-.info{flex:1;}
-.desc{font-size:12px;color:#777;}
-.price{font-size:13px;color:#777;}
+        /* コンテナ */
+        .container {
+            padding: 15px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
 
-button{
-  border:none;
-  border-radius:50%;
-  width:34px;height:34px;
-  background:#F4A300;
-  color:#fff;
-  font-size:18px;
-}
-.count{
-  width:24px;
-  text-align:center;
-}
+        /* セクション共通 */
+        .section {
+            background: var(--white);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
 
-#confirmBar{
-  position:fixed;
-  bottom:0;
-  left:0;
-  right:0;
-  background:#E4572E;
-  padding:12px;
-  display:none;
-}
-#confirmBar button{
-  width:100%;
-  border-radius:30px;
-  height:48px;
-  font-size:18px;
-  background:#fff;
-  color:#E4572E;
-}
+        h2 {
+            font-size: 1.1rem;
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--primary-light);
+            padding-bottom: 5px;
+            margin-top: 0;
+        }
 
-.reset{
-  width:100%;
-  background:#999;
-  color:#fff;
-  border-radius:10px;
-  padding:10px;
-}
-</style>
+        /* 注文履歴 */
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .history-name {
+            font-weight: bold;
+            flex: 1;
+            padding-right: 10px;
+        }
+
+        .history-details {
+            text-align: right;
+            font-size: 0.9rem;
+            min-width: 100px;
+        }
+
+        .total-price {
+            text-align: right;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--confirm-color);
+            margin-top: 15px;
+            border-top: 2px dotted #ddd;
+            padding-top: 10px;
+        }
+
+        /* 検索と手入力 */
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px; /* iOS zoom防止 */
+            background: #fafafa;
+        }
+
+        .manual-entry-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 5px;
+            padding: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1rem;
+        }
+
+        .btn-add {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-reset {
+            background-color: #90A4AE;
+            color: white;
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+
+        /* 検索結果エリア */
+        #search-results-area {
+            display: none; /* 初期非表示 */
+            background: #fff3e0;
+            border: 2px solid var(--primary-color);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        #search-results-area h3 {
+            margin: 0 0 10px 0;
+            font-size: 1rem;
+            color: var(--accent-color);
+        }
+
+        /* アコーディオンメニュー */
+        .accordion-l {
+            margin-bottom: 12px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: var(--white);
+            box-shadow: var(--shadow);
+        }
+
+        .accordion-header-l {
+            background-color: #FFCC80;
+            padding: 15px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .accordion-header-l::after {
+            content: '+';
+            font-size: 1.5rem;
+            font-weight: normal;
+        }
+        .accordion-l.active .accordion-header-l::after {
+            content: '-';
+        }
+
+        .accordion-content-l {
+            display: none;
+            background: #fff;
+        }
+        .accordion-l.active .accordion-content-l {
+            display: block;
+        }
+
+        /* 中分類 */
+        .accordion-m {
+            border-bottom: 1px solid #eee;
+        }
+
+        .accordion-header-m {
+            padding: 12px 15px;
+            background-color: #FFE0B2;
+            cursor: pointer;
+            font-size: 1rem;
+            position: relative;
+            padding-left: 30px;
+            font-weight: 500;
+        }
+        
+        .accordion-header-m::before {
+            content: '▶';
+            font-size: 0.8rem;
+            position: absolute;
+            left: 12px;
+            top: 15px;
+            transition: transform 0.2s;
+            color: #E65100;
+        }
+        .accordion-m.active .accordion-header-m::before {
+            transform: rotate(90deg);
+        }
+
+        .accordion-content-m {
+            display: none;
+        }
+        .accordion-m.active .accordion-content-m {
+            display: block;
+        }
+
+        /* 商品行 */
+        .menu-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            border-bottom: 1px dotted #ccc;
+        }
+        .menu-item:last-child {
+            border-bottom: none;
+        }
+
+        .item-info {
+            flex: 1;
+            padding-right: 10px;
+        }
+
+        .item-name {
+            font-weight: bold;
+            font-size: 1rem;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .item-desc {
+            font-size: 0.85rem;
+            color: #666;
+            margin-right: 5px;
+            background: #eee;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .item-price {
+            color: var(--confirm-color); /* 赤っぽく強調 */
+            font-weight: bold;
+        }
+
+        /* カウンターコントロール */
+        .counter-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 3px;
+            border-radius: 20px;
+        }
+
+        .btn-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 1.2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            padding: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        
+        .btn-circle:active {
+            transform: scale(0.9);
+        }
+
+        .item-count {
+            font-weight: bold;
+            font-size: 1.1rem;
+            min-width: 25px;
+            text-align: center;
+        }
+
+        /* 確定ボタン（フローティング） */
+        .fab-confirm {
+            position: fixed;
+            bottom: 25px;
+            right: 20px;
+            background-color: var(--confirm-color);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            font-weight: bold;
+            font-size: 1.1rem;
+            border: 2px solid #fff;
+            cursor: pointer;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.1s;
+        }
+
+        .fab-confirm:active {
+            transform: scale(0.95);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
 </head>
-
 <body>
 
 <header>
-  <h1>ダリマ注文カウンター</h1>
-  <div class="subttl">チーム友達専用</div>
+    <div class="header-sub">チーム友達専用</div>
+    <div class="header-main">ダリマ注文カウンター</div>
 </header>
 
-<div class="card">
-<details>
-<summary>確定した注文履歴</summary>
-<div id="history"></div>
-<div id="total"></div>
-</details>
+<div class="container">
+
+    <div class="section" id="history-section">
+        <h2>注文履歴</h2>
+        <ul class="history-list" id="history-list">
+            <li style="text-align:center; color:#999; padding:20px;">履歴はありません</li>
+        </ul>
+        <div class="total-price" id="grand-total">合計: ¥0</div>
+    </div>
+
+    <div class="section">
+        <input type="text" id="search-input" placeholder="メニュー名で検索..." oninput="handleSearch()">
+    </div>
+
+    <div id="search-results-area">
+        <h3>検索結果</h3>
+        <div id="search-results-list"></div>
+    </div>
+
+    <div class="section">
+        <h2>メニュー手入力</h2>
+        <input type="text" id="manual-name" placeholder="商品名 (例: まかない)">
+        <div class="manual-entry-row">
+            <input type="number" id="manual-price" placeholder="金額 (円)" style="flex:1">
+            <input type="number" id="manual-count" placeholder="個数" value="1" style="width: 80px;">
+        </div>
+        <button class="btn btn-add" onclick="addManualItem()">リストに追加して注文</button>
+        <p style="font-size:0.8rem; color:#666; margin-top:5px;">※追加ボタンを押すと即座に注文履歴に反映されます</p>
+    </div>
+
+    <div id="menu-container">
+        </div>
+
+    <div style="text-align:center; padding-bottom:30px;">
+        <button class="btn btn-reset" onclick="resetAllData()">データを全削除してリセット</button>
+    </div>
+
 </div>
 
-<div id="menu"></div>
-
-<div id="confirmBar">
-<button onclick="confirmOrder()">注文を確定する</button>
-</div>
-
-<div class="card">
-<button class="reset" onclick="resetAll()">リセット</button>
-</div>
+<button class="fab-confirm" onclick="confirmOrder()">
+    <span>注文を確定する</span>
+</button>
 
 <script>
-const STORAGE_KEY="darima_orders";
+    /**
+     * [cite_start]CSVデータ [cite: 1]
+     * 大分類, 中分類, 小分類, 商品名, 値段
+     */
+    const RAW_MENU_DATA = [
+        // ドリンク
+        {l:"ドリンクメニュー", m:"ビール", s:"生", n:"ザ・プレミアム・モルツ", p:499},
+        {l:"ドリンクメニュー", m:"ビール", s:"生", n:"カレーセットに追加の生ビール", p:300},
+        {l:"ドリンクメニュー", m:"ビール", s:"ボトル", n:"キリンラガー", p:600},
+        {l:"ドリンクメニュー", m:"ビール", s:"ボトル", n:"サッポロエビス", p:600},
+        {l:"ドリンクメニュー", m:"ビール", s:"ボトル", n:"アサヒスーパードライ", p:600},
+        {l:"ドリンクメニュー", m:"ビール", s:"世界のビール", n:"ネパール シンハー タイガー", p:600},
+        {l:"ドリンクメニュー", m:"ビール", s:"世界のビール", n:"コロナ", p:600},
+        {l:"ドリンクメニュー", m:"ビール", s:"ビールカクテル", n:"マンゴービール", p:499},
+        {l:"ドリンクメニュー", m:"ビール", s:"ビールカクテル", n:"シャンディガフ", p:499},
+        {l:"ドリンクメニュー", m:"ビール", s:"ビールカクテル", n:"レッドアイ", p:499},
+        {l:"ドリンクメニュー", m:"スタンダードカクテル", s:"ジン", n:"ジントニック", p:399},
+        {l:"ドリンクメニュー", m:"スタンダードカクテル", s:"ジン", n:"ジンライム", p:399},
+        {l:"ドリンクメニュー", m:"スタンダードカクテル", s:"ジン", n:"ジンバック", p:399},
+        {l:"ドリンクメニュー", m:"スタンダードカクテル", s:"ウォッカ", n:"スクリュードライバー", p:399},
+        {l:"ドリンクメニュー", m:"スタンダードカクテル", s:"ウォッカ", n:"ウォッカトニック", p:399},
+        {l:"ドリンクメニュー", m:"スタンダードカクテル", s:"ウォッカ", n:"モスコミュール", p:399},
+        {l:"ドリンクメニュー", m:"スタンダードカクテル", s:"カンパリ", n:"カンパリオレンジ", p:399},
+        {l:"ドリンクメニュー", m:"スタンダードカクテル", s:"カンパリ", n:"カンパリソーダウーロンティー", p:399},
+        {l:"ドリンクメニュー", m:"スタンダードカクテル", s:"カンパリ", n:"カンパリラッシー", p:399},
+        {l:"ドリンクメニュー", m:"スタンダードカクテル", s:"カシス", n:"カシスオレンジ", p:399},
+        {l:"ドリンクメニュー", m:"スタンダードカクテル", s:"カシス", n:"カシスウーロン", p:399},
+        {l:"ドリンクメニュー", m:"スタンダードカクテル", s:"カシス", n:"カシスラッシー", p:399},
+        {l:"ドリンクメニュー", m:"スタンダードカクテル", s:"ジャパニーズジンラム", n:"バカルディラム", p:449},
+        {l:"ドリンクメニュー", m:"スタンダードカクテル", s:"ジャパニーズジンラム", n:"バカルディハイ", p:449},
+        {l:"ドリンクメニュー", m:"スタンダードカクテル", s:"ジャパニーズジンラム", n:"バカルディラッシー", p:449},
+        {l:"ドリンクメニュー", m:"スタンダードカクテル", s:"ラム", n:"ラムコーラ", p:499},
+        {l:"ドリンクメニュー", m:"スタンダードカクテル", s:"ラム", n:"ラムラッシー", p:499},
+        {l:"ドリンクメニュー", m:"ワイン", s:"グラス", n:"ワイン赤", p:399},
+        {l:"ドリンクメニュー", m:"ワイン", s:"グラス", n:"ワイン白", p:399},
+        {l:"ドリンクメニュー", m:"ワイン", s:"ボトル", n:"インディアンワインボトル", p:3000},
+        {l:"ドリンクメニュー", m:"ワイン", s:"ボトル", n:"トークンワイン赤", p:2500},
+        {l:"ドリンクメニュー", m:"ワイン", s:"ボトル", n:"トークンワイン白", p:2500},
+        {l:"ドリンクメニュー", m:"サワー", s:"", n:"こだわり酒場のレモンサワー", p:399},
+        {l:"ドリンクメニュー", m:"サワー", s:"", n:"シークワーサーサワー", p:399},
+        {l:"ドリンクメニュー", m:"サワー", s:"", n:"グレープフルーツサワー", p:399},
+        {l:"ドリンクメニュー", m:"サワー", s:"", n:"ライムサワー", p:399},
+        {l:"ドリンクメニュー", m:"サワー", s:"", n:"ウーロンハイ", p:399},
+        {l:"ドリンクメニュー", m:"サワー", s:"", n:"緑茶ハイ", p:399},
+        {l:"ドリンクメニュー", m:"ハイボール", s:"", n:"インドのハイボール", p:450},
+        {l:"ドリンクメニュー", m:"ハイボール", s:"", n:"角ハイボール", p:420},
+        {l:"ドリンクメニュー", m:"ハイボール", s:"", n:"ジムビームハイボール", p:420},
+        {l:"ドリンクメニュー", m:"ハイボール", s:"", n:"シーバスリーガルハイボール", p:480},
+        {l:"ドリンクメニュー", m:"ハイボール", s:"", n:"ジャックダニエルハイボール", p:450},
+        {l:"ドリンクメニュー", m:"ハイボール", s:"", n:"IWハーパーハイボール", p:450},
+        {l:"ドリンクメニュー", m:"ウイスキー", s:"グラス", n:"ジョニーウォーカーレッドラベル", p:420},
+        {l:"ドリンクメニュー", m:"ウイスキー", s:"グラス", n:"ジョニーウォーカーブラックラベル", p:450},
+        {l:"ドリンクメニュー", m:"ウイスキー", s:"ハイボール", n:"ジョニーウォーカーブラックラベル", p:460},
+        {l:"ドリンクメニュー", m:"ウイスキー", s:"グラス", n:"角", p:390},
+        {l:"ドリンクメニュー", m:"ウイスキー", s:"グラス", n:"ジムビーム", p:390},
+        {l:"ドリンクメニュー", m:"ウイスキー", s:"グラス", n:"シーバスリーガル", p:420},
+        {l:"ドリンクメニュー", m:"ウイスキー", s:"グラス", n:"ジャックダニエル", p:420},
+        {l:"ドリンクメニュー", m:"ウイスキー", s:"グラス", n:"IWハーパー", p:420},
+        {l:"ドリンクメニュー", m:"ウイスキー", s:"グラス", n:"インドのウイスキー", p:410},
+        {l:"ドリンクメニュー", m:"焼酎", s:"グラス", n:"いいちこ", p:399},
+        {l:"ドリンクメニュー", m:"焼酎", s:"ボトル", n:"いいちこ", p:2200},
+        {l:"ドリンクメニュー", m:"焼酎", s:"グラス", n:"黒霧島", p:399},
+        {l:"ドリンクメニュー", m:"焼酎", s:"ボトル", n:"黒霧島", p:2200},
+        {l:"ドリンクメニュー", m:"焼酎", s:"グラス", n:"二階堂", p:399},
+        {l:"ドリンクメニュー", m:"焼酎", s:"ボトル", n:"二階堂", p:2200},
+        {l:"ドリンクメニュー", m:"焼酎", s:"グラス", n:"ジンロ", p:399},
+        {l:"ドリンクメニュー", m:"焼酎", s:"ボトル", n:"ジンロ", p:2200},
+        {l:"ドリンクメニュー", m:"ソフトドリンク", s:"", n:"ウーロン茶", p:250},
+        {l:"ドリンクメニュー", m:"ソフトドリンク", s:"", n:"オレンジジュース", p:250},
+        {l:"ドリンクメニュー", m:"ソフトドリンク", s:"", n:"コーラ", p:250},
+        {l:"ドリンクメニュー", m:"ソフトドリンク", s:"", n:"マンゴージュース", p:300},
+        {l:"ドリンクメニュー", m:"ソフトドリンク", s:"", n:"マンゴーラッシー", p:300},
+        {l:"ドリンクメニュー", m:"ソフトドリンク", s:"", n:"ラッシー", p:300},
+        {l:"ドリンクメニュー", m:"ソフトドリンク", s:"", n:"アイスティー", p:300},
+        {l:"ドリンクメニュー", m:"ソフトドリンク", s:"", n:"アイスコーヒー", p:250},
+        {l:"ドリンクメニュー", m:"ソフトドリンク", s:"", n:"ジンジャーエール", p:250},
+        
+        // アジアンメニュー（中分類なし）
+        {l:"アジアンメニュー", m:"", s:"", n:"タイ野菜炒め", p:780},
+        {l:"アジアンメニュー", m:"", s:"", n:"アサリのバジル炒め", p:800},
+        {l:"アジアンメニュー", m:"", s:"", n:"エビのガーリック炒め", p:890},
+        {l:"アジアンメニュー", m:"", s:"", n:"ムール貝のガーリック炒め", p:880},
+        {l:"アジアンメニュー", m:"", s:"", n:"春雨サラダ", p:850},
+        {l:"アジアンメニュー", m:"", s:"", n:"エビのすり身揚げ", p:1200},
+        {l:"アジアンメニュー", m:"", s:"", n:"焼きビーフン", p:950},
+        {l:"アジアンメニュー", m:"", s:"", n:"トムヤムクン", p:700},
+        {l:"アジアンメニュー", m:"", s:"", n:"トムヤムラーメン", p:900},
+        {l:"アジアンメニュー", m:"", s:"", n:"チョエラ", p:850},
+        {l:"アジアンメニュー", m:"", s:"", n:"モモ", p:750},
+        {l:"アジアンメニュー", m:"", s:"", n:"アルアチャール", p:700},
+        {l:"アジアンメニュー", m:"", s:"", n:"チャウメン", p:800},
+        {l:"アジアンメニュー", m:"", s:"", n:"生春巻き", p:780},
+        {l:"アジアンメニュー", m:"", s:"", n:"トゥクパ", p:850},
+        {l:"アジアンメニュー", m:"", s:"", n:"タイチャーハン", p:800},
+        {l:"アジアンメニュー", m:"", s:"", n:"鶏肉とバジル炒めご飯", p:950},
+        {l:"アジアンメニュー", m:"", s:"", n:"タイラーメン", p:900},
+        {l:"アジアンメニュー", m:"", s:"", n:"グリーンカレー", p:850},
 
-const menuData=[
-["ドリンクメニュー","ビール","生","ザ・プレミアム・モルツ",499],
-["ドリンクメニュー","ビール","生","カレーセットに追加の生ビール",300],
-["ドリンクメニュー","ビール","ボトル","キリンラガー",600],
-["ドリンクメニュー","ビール","ボトル","サッポロエビス",600],
-["ドリンクメニュー","ビール","ボトル","アサヒスーパードライ",600],
-["ドリンクメニュー","ビール","世界のビール","コロナ",600],
+        // サラダ・天ぷら・ピラフ（中分類なし）
+        {l:"サラダ・天ぷら・ピラフ", m:"", s:"", n:"野菜サラダ", p:450},
+        {l:"サラダ・天ぷら・ピラフ", m:"", s:"", n:"チャナサラダ", p:450},
+        {l:"サラダ・天ぷら・ピラフ", m:"", s:"", n:"トマトサラダ", p:450},
+        {l:"サラダ・天ぷら・ピラフ", m:"", s:"", n:"ヨーグルトサラダ", p:390},
+        {l:"サラダ・天ぷら・ピラフ", m:"", s:"", n:"チキンサラダ", p:550},
+        {l:"サラダ・天ぷら・ピラフ", m:"", s:"", n:"サフランライス", p:300},
+        {l:"サラダ・天ぷら・ピラフ", m:"", s:"", n:"サモサ", p:450},
+        {l:"サラダ・天ぷら・ピラフ", m:"", s:"", n:"チキンビリヤニ", p:900},
+        {l:"サラダ・天ぷら・ピラフ", m:"", s:"", n:"なすの天ぷら", p:0},
+        {l:"サラダ・天ぷら・ピラフ", m:"", s:"", n:"シーフードビリヤニ", p:990},
 
-["カレー","チキンカレー","","バターチキンカレー",880],
-["カレー","チキンカレー","","チキンカレー",850],
-["カレー","マトンカレー","","マトンカレー",800],
-["カレー","野菜カレー","","ベジタブルカレー",800],
+        // タンドリー（中分類なし、小分類あり）
+        {l:"タンドリー", m:"", s:"2pc", n:"シークカバブ", p:450},
+        {l:"タンドリー", m:"", s:"4pc", n:"シークカバブ", p:750},
+        {l:"タンドリー", m:"", s:"2pc", n:"タンドリーチキン", p:550},
+        {l:"タンドリー", m:"", s:"4pc", n:"タンドリーチキン", p:1050},
+        {l:"タンドリー", m:"", s:"2pc", n:"チキンティッカ", p:450},
+        {l:"タンドリー", m:"", s:"4pc", n:"チキンティッカ", p:850},
+        {l:"タンドリー", m:"", s:"2pc", n:"マライチキン", p:450},
+        {l:"タンドリー", m:"", s:"4pc", n:"マライチキン", p:850},
+        {l:"タンドリー", m:"", s:"4pc", n:"タンドリー手羽先", p:699},
+        {l:"タンドリー", m:"", s:"2pc", n:"タンドリー海老", p:550},
+        {l:"タンドリー", m:"", s:"4pc", n:"タンドリー海老", p:1050},
 
-["ナン","","","プレーンナン",250],
-["ナン","","","チーズナン",500],
-["ナン","","","ガーリックナン",350]
-];
+        // スナック（中分類なし）
+        {l:"スナック", m:"", s:"2pc", n:"フィッシュティッカ", p:550},
+        {l:"スナック", m:"", s:"4pc", n:"フィッシュティッカ", p:1050},
+        {l:"スナック", m:"", s:"7pc", n:"タンドリーミックスグリル", p:1550},
 
-let temp={}, fixed={};
+        // カレー
+        {l:"カレー", m:"セット料理", s:"", n:"お子様セット", p:680},
+        {l:"カレー", m:"セット料理", s:"", n:"ベジタリアンセット", p:1190},
+        {l:"カレー", m:"セット料理", s:"", n:"タンドリーライスセット", p:1449},
+        {l:"カレー", m:"セット料理", s:"", n:"スペシャルセット", p:1349},
+        {l:"カレー", m:"セット料理", s:"", n:"チーズナンセット", p:1449},
+        {l:"カレー", m:"セット料理", s:"", n:"ダリマスペシャルセット", p:1800},
+        {l:"カレー", m:"セット料理", s:"", n:"カップルセット", p:4500},
+        {l:"カレー", m:"セット料理", s:"", n:"単品カレー追加ナンセット", p:350},
+        {l:"カレー", m:"セット料理", s:"", n:"単品カレー追加ライスセット", p:350},
+        
+        {l:"カレー", m:"シーフードカレー", s:"", n:"ほうれん草えび", p:850},
+        {l:"カレー", m:"シーフードカレー", s:"", n:"えびカレー", p:800},
+        {l:"カレー", m:"シーフードカレー", s:"", n:"ミックスシーフードカレー", p:850},
+        {l:"カレー", m:"シーフードカレー", s:"", n:"シーフードマサラ", p:900},
+        {l:"カレー", m:"シーフードカレー", s:"", n:"フィッシュマサラ", p:950},
 
-// 保存データ読み込み
-const saved=localStorage.getItem(STORAGE_KEY);
-if(saved) fixed=JSON.parse(saved);
+        {l:"カレー", m:"野菜カレー", s:"", n:"ベジタブルカレー", p:800},
+        {l:"カレー", m:"野菜カレー", s:"", n:"アルベーガンカレー", p:800},
+        {l:"カレー", m:"野菜カレー", s:"", n:"アルゴビカレー", p:800},
+        {l:"カレー", m:"野菜カレー", s:"", n:"ダルタルカ", p:800},
+        {l:"カレー", m:"野菜カレー", s:"", n:"ほうれん草チーズ", p:850},
+        {l:"カレー", m:"野菜カレー", s:"", n:"チャナマサラカレー", p:800},
 
-function renderMenu(){
- const root=document.getElementById("menu");
- root.innerHTML="";
+        {l:"カレー", m:"チキンカレー", s:"", n:"バターチキンカレー", p:880},
+        {l:"カレー", m:"チキンカレー", s:"", n:"チキンカレー", p:850},
+        {l:"カレー", m:"チキンカレー", s:"", n:"キーマエッグカレー", p:800},
+        {l:"カレー", m:"チキンカレー", s:"", n:"ほうれん草チキンカレー", p:850},
+        {l:"カレー", m:"チキンカレー", s:"", n:"日替わりカレー", p:800},
+        {l:"カレー", m:"チキンカレー", s:"", n:"チキン・ド・ビャザ", p:850},
+        {l:"カレー", m:"チキンカレー", s:"", n:"チキンティッカマサラ", p:850},
 
- const grouped={};
- menuData.forEach(m=>{
-  if(!grouped[m[0]]) grouped[m[0]]=[];
-  grouped[m[0]].push(m);
- });
+        {l:"カレー", m:"マトンカレー", s:"", n:"マトンカレー", p:800},
+        {l:"カレー", m:"マトンカレー", s:"", n:"ほうれん草マトンカレー", p:850},
+        {l:"カレー", m:"マトンカレー", s:"", n:"ダルマトン", p:850},
+        {l:"カレー", m:"マトンカレー", s:"", n:"マトン・ド・ビャザ", p:850},
+        {l:"カレー", m:"マトンカレー", s:"", n:"マトンマサラ", p:850},
 
- Object.keys(grouped).forEach(cat=>{
-  const d=document.createElement("details");
-  d.className="card";
-  d.innerHTML=`<summary>${cat}</summary>`;
-  let lastSub="";
-  grouped[cat].forEach(([_,sub,desc,name,price])=>{
-   if(sub && sub!==lastSub){
-     d.innerHTML+=`<div class="subcat">${sub}</div>`;
-     lastSub=sub;
-   }
-   const c=temp[name]||0;
-   d.innerHTML+=`
-   <div class="item">
-    <div class="info">
-      ${name}
-      ${desc?`<div class="desc">${desc}</div>`:""}
-      <div class="price">¥${price}</div>
-    </div>
-    <button onclick="chg('${name}',${price},1)">＋</button>
-    <span class="count">${c}</span>
-    <button onclick="chg('${name}',${price},-1)">－</button>
-   </div>`;
-  });
-  root.appendChild(d);
- });
-}
+        {l:"カレー", m:"ポークカレー", s:"", n:"ポークカレー", p:800},
+        {l:"カレー", m:"ポークカレー", s:"", n:"ほうれん草ポークカレー", p:850},
+        {l:"カレー", m:"ポークカレー", s:"", n:"ポークマサラ", p:800},
 
-function chg(name,price,val){
- if(!temp[name]) temp[name]={count:0,price};
- temp[name].count+=val;
- if(temp[name].count<=0) delete temp[name];
- document.getElementById("confirmBar").style.display="block";
- renderMenu();
-}
+        // ナン
+        {l:"ナン", m:"", s:"", n:"フルーティーナン", p:550},
+        {l:"ナン", m:"", s:"", n:"チーズナン", p:500},
+        {l:"ナン", m:"", s:"", n:"ガーリックナン", p:350},
+        {l:"ナン", m:"", s:"", n:"ゴマナン", p:350},
+        {l:"ナン", m:"", s:"", n:"プレーンナン", p:250},
+        {l:"ナン", m:"", s:"", n:"チーズガーリックナン", p:600},
+        {l:"ナン", m:"", s:"", n:"キーマポテトナン", p:550},
+    ];
 
-function confirmOrder(){
- Object.entries(temp).forEach(([n,v])=>{
-  if(!fixed[n]) fixed[n]={count:0,price:v.price};
-  fixed[n].count+=v.count;
- });
- temp={};
- localStorage.setItem(STORAGE_KEY,JSON.stringify(fixed));
- document.getElementById("confirmBar").style.display="none";
- renderHistory();
- renderMenu();
-}
+    let orders = {}; // { menu-id: quantity }
+    let manualOrders = []; // [{id, name, price, quantity}]
 
-function renderHistory(){
- const h=document.getElementById("history");
- const t=document.getElementById("total");
- h.innerHTML="";
- let sum=0;
- Object.entries(fixed).forEach(([n,v])=>{
-  const sub=v.count*v.price;
-  sum+=sub;
-  h.innerHTML+=`${n} × ${v.count}　¥${sub}<br>`;
- });
- t.innerHTML=sum?`<b>合計：¥${sum}</b>`:"";
-}
+    window.onload = function() {
+        renderMenu();
+        loadData();
+    };
 
-function resetAll(){
- if(confirm("本当にリセットしますか？")){
-  temp={};fixed={};
-  localStorage.removeItem(STORAGE_KEY);
-  renderMenu();renderHistory();
- }
-}
+    /**
+     * メニュー描画
+     * 中分類がない場合は直下、ある場合はアコーディオン
+     */
+    function renderMenu() {
+        const container = document.getElementById('menu-container');
+        container.innerHTML = '';
 
-renderMenu();
-renderHistory();
+        // データ構造化
+        const structure = {};
+        
+        RAW_MENU_DATA.forEach((item, index) => {
+            if (!structure[item.l]) structure[item.l] = {};
+            // 中分類が空の場合は空文字キーで保存
+            const mKey = item.m || "";
+            if (!structure[item.l][mKey]) structure[item.l][mKey] = [];
+            
+            item.id = `menu-${index}`;
+            structure[item.l][mKey].push(item);
+        });
+
+        // DOM生成
+        for (const [lCat, mCats] of Object.entries(structure)) {
+            const lDiv = document.createElement('div');
+            lDiv.className = 'accordion-l';
+            
+            const lHeader = document.createElement('div');
+            lHeader.className = 'accordion-header-l';
+            lHeader.textContent = lCat;
+            lHeader.onclick = () => lDiv.classList.toggle('active');
+            
+            const lContent = document.createElement('div');
+            lContent.className = 'accordion-content-l';
+
+            const mKeys = Object.keys(mCats);
+            
+            // 中分類が1つだけで、かつ空文字の場合は、中分類アコーディオンを作らずにアイテムを表示
+            if (mKeys.length === 1 && mKeys[0] === "") {
+                const items = mCats[""];
+                items.forEach(item => {
+                    lContent.appendChild(createItemElement(item));
+                });
+            } else {
+                // 中分類がある場合
+                for (const [mCat, items] of Object.entries(mCats)) {
+                    const mDiv = document.createElement('div');
+                    mDiv.className = 'accordion-m';
+
+                    const mHeader = document.createElement('div');
+                    mHeader.className = 'accordion-header-m';
+                    // 中分類名が空の場合は便宜上「その他」等は表示せず、空白のままにするか、デザイン調整
+                    // CSV通り、空の場合はヘッダーを表示せずアイテムだけ出すと崩れるので、名前を表示
+                    mHeader.textContent = mCat === "" ? "一般メニュー" : mCat;
+                    
+                    mHeader.onclick = (e) => {
+                        e.stopPropagation();
+                        mDiv.classList.toggle('active');
+                    };
+
+                    const mContent = document.createElement('div');
+                    mContent.className = 'accordion-content-m';
+
+                    items.forEach(item => {
+                        mContent.appendChild(createItemElement(item));
+                    });
+
+                    mDiv.appendChild(mHeader);
+                    mDiv.appendChild(mContent);
+                    lContent.appendChild(mDiv);
+                }
+            }
+
+            lDiv.appendChild(lHeader);
+            lDiv.appendChild(lContent);
+            container.appendChild(lDiv);
+        }
+    }
+
+    /**
+     * 商品行のDOM要素を作成
+     */
+    function createItemElement(item) {
+        const el = document.createElement('div');
+        el.className = 'menu-item';
+        el.dataset.name = item.n; // 検索用
+        
+        // 小分類があれば表示
+        const desc = item.s ? `<span class="item-desc">${item.s}</span>` : '';
+
+        el.innerHTML = `
+            <div class="item-info">
+                ${desc}
+                <span class="item-name">${item.n}</span>
+                <div class="item-price">¥${item.p.toLocaleString()}</div>
+            </div>
+            <div class="counter-control">
+                <button class="btn-circle" onclick="updateCount('${item.id}', -1)">-</button>
+                <span class="item-count" id="count-${item.id}">0</span>
+                <button class="btn-circle" onclick="updateCount('${item.id}', 1)">+</button>
+            </div>
+        `;
+        return el;
+    }
+
+    /**
+     * カウントの増減
+     */
+    function updateCount(id, delta) {
+        const currentVal = orders[id] || 0;
+        const newVal = currentVal + delta;
+
+        if (newVal < 0) return; // 0未満にはしない
+
+        orders[id] = newVal;
+
+        // メインリストの表示更新
+        const mainCounter = document.getElementById(`count-${id}`);
+        if (mainCounter) mainCounter.textContent = orders[id];
+
+        // 検索結果の表示更新（もしあれば）
+        const searchCounter = document.getElementById(`search-count-${id}`);
+        if (searchCounter) searchCounter.textContent = orders[id];
+
+        // 検索結果更新時も履歴は「確定」を押すまで反映しないのが元の仕様だが、
+        // ユーザー体験のため、現在の合計を計算して表示するロジックを入れても良い。
+        // ここでは「確定ボタン」の重要性を維持するため、履歴再描画はしない。
+    }
+
+    /**
+     * 検索機能
+     * ヒットしたものを別エリアに表示
+     */
+    function handleSearch() {
+        const text = document.getElementById('search-input').value.toLowerCase().trim();
+        const resultsArea = document.getElementById('search-results-area');
+        const resultsList = document.getElementById('search-results-list');
+        const menuContainer = document.getElementById('menu-container');
+
+        if (text === "") {
+            resultsArea.style.display = 'none';
+            menuContainer.classList.remove('hidden');
+            return;
+        }
+
+        // 検索中
+        resultsArea.style.display = 'block';
+        menuContainer.classList.add('hidden');
+        resultsList.innerHTML = '';
+
+        let hits = 0;
+        RAW_MENU_DATA.forEach(item => {
+            if (item.n.toLowerCase().includes(text) || (item.m && item.m.includes(text))) {
+                hits++;
+                // 検索結果用の要素を作成（ID重複避けるためカウンターIDを変える）
+                const div = document.createElement('div');
+                div.className = 'menu-item';
+                div.style.background = '#fff';
+                div.style.borderBottom = '1px solid #eee';
+                
+                const desc = item.s ? `<span class="item-desc">${item.s}</span>` : '';
+                const currentCount = orders[item.id] || 0;
+
+                div.innerHTML = `
+                    <div class="item-info">
+                        <span style="font-size:0.8rem; color:#888;">${item.l}${item.m ? ' > '+item.m : ''}</span><br>
+                        ${desc}
+                        <span class="item-name">${item.n}</span>
+                        <div class="item-price">¥${item.p.toLocaleString()}</div>
+                    </div>
+                    <div class="counter-control">
+                        <button class="btn-circle" onclick="updateCount('${item.id}', -1)">-</button>
+                        <span class="item-count" id="search-count-${item.id}">${currentCount}</span>
+                        <button class="btn-circle" onclick="updateCount('${item.id}', 1)">+</button>
+                    </div>
+                `;
+                resultsList.appendChild(div);
+            }
+        });
+
+        if (hits === 0) {
+            resultsList.innerHTML = '<div style="padding:10px; text-align:center; color:#666;">見つかりませんでした</div>';
+        }
+    }
+
+    /**
+     * 手入力アイテムの追加（即時反映）
+     */
+    function addManualItem() {
+        const name = document.getElementById('manual-name').value;
+        const price = parseInt(document.getElementById('manual-price').value);
+        const count = parseInt(document.getElementById('manual-count').value);
+
+        if (!name || isNaN(price) || isNaN(count) || count < 1) {
+            alert('入力内容を確認してください');
+            return;
+        }
+
+        const id = `manual-${Date.now()}`;
+        manualOrders.push({
+            id: id,
+            name: name,
+            price: price,
+            quantity: count
+        });
+
+        // 入力クリア
+        document.getElementById('manual-name').value = '';
+        document.getElementById('manual-price').value = '';
+        document.getElementById('manual-count').value = 1;
+
+        // 即保存して履歴更新
+        saveData(); 
+        renderHistory();
+        
+        // 画面を上部へスクロールして確認させる
+        document.getElementById('history-section').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    /**
+     * 注文確定（メニューからの注文を保存）
+     */
+    function confirmOrder() {
+        saveData();
+        renderHistory();
+        alert('注文内容を保存しました！');
+        document.getElementById('history-section').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    /**
+     * データ保存
+     */
+    function saveData() {
+        const data = {
+            orders: orders,
+            manualOrders: manualOrders
+        };
+        localStorage.setItem('dalimaOrderData', JSON.stringify(data));
+    }
+
+    /**
+     * データ読み込み
+     */
+    function loadData() {
+        const json = localStorage.getItem('dalimaOrderData');
+        if (json) {
+            const data = JSON.parse(json);
+            orders = data.orders || {};
+            manualOrders = data.manualOrders || [];
+
+            // カウンター表示復元
+            for (const [id, count] of Object.entries(orders)) {
+                const el = document.getElementById(`count-${id}`);
+                if (el) el.textContent = count;
+            }
+        }
+        renderHistory();
+    }
+
+    /**
+     * 履歴描画
+     */
+    function renderHistory() {
+        const list = document.getElementById('history-list');
+        list.innerHTML = '';
+        let total = 0;
+        let hasItem = false;
+
+        // メニューからの注文
+        RAW_MENU_DATA.forEach(item => {
+            const count = orders[item.id] || 0;
+            if (count > 0) {
+                hasItem = true;
+                const sum = item.p * count;
+                total += sum;
+                addItemToHistoryList(list, item.n, item.p, count, sum, item.id, false);
+            }
+        });
+
+        // 手入力の注文
+        manualOrders.forEach((item, index) => {
+            if (item.quantity > 0) {
+                hasItem = true;
+                const sum = item.price * item.quantity;
+                total += sum;
+                addItemToHistoryList(list, item.name, item.price, item.quantity, sum, index, true);
+            }
+        });
+
+        if (!hasItem) {
+            list.innerHTML = '<li style="text-align:center; color:#999; padding:20px;">履歴はありません</li>';
+        }
+
+        document.getElementById('grand-total').textContent = `合計: ¥${total.toLocaleString()}`;
+    }
+
+    /**
+     * 履歴リスト要素生成
+     */
+    function addItemToHistoryList(parent, name, price, count, sum, id, isManual) {
+        const li = document.createElement('li');
+        li.className = 'history-item';
+        
+        // 削除確認付きの更新関数を呼ぶ
+        const updateFunc = isManual ? 'updateManualHistory' : 'updateMenuHistory';
+
+        li.innerHTML = `
+            <div class="history-name">
+                ${name}<br>
+                <span style="font-size:0.8rem; color:#666; font-weight:normal;">@¥${price.toLocaleString()}</span>
+            </div>
+            <div class="history-details">
+                <div class="counter-control" style="background:none; padding:0; justify-content:flex-end;">
+                     <button class="btn-circle" style="width:28px; height:28px; font-size:1rem; background:#ccc;" onclick="${updateFunc}('${id}', -1)">-</button>
+                     <span style="min-width:20px; text-align:center;">${count}</span>
+                     <button class="btn-circle" style="width:28px; height:28px; font-size:1rem;" onclick="${updateFunc}('${id}', 1)">+</button>
+                </div>
+                <div style="margin-top:5px; font-weight:bold;">¥${sum.toLocaleString()}</div>
+            </div>
+        `;
+        parent.appendChild(li);
+    }
+
+    /**
+     * 履歴内でのメニュー更新（削除確認あり）
+     */
+    function updateMenuHistory(id, delta) {
+        const current = orders[id] || 0;
+        const next = current + delta;
+
+        if (next <= 0) {
+            if (confirm('この商品を履歴から削除しますか？')) {
+                orders[id] = 0;
+            } else {
+                return; // キャンセルなら何もしない
+            }
+        } else {
+            orders[id] = next;
+        }
+
+        // 表示同期
+        const el = document.getElementById(`count-${id}`);
+        if(el) el.textContent = orders[id];
+
+        saveData();
+        renderHistory();
+    }
+
+    /**
+     * 履歴内での手入力アイテム更新（削除確認あり）
+     */
+    function updateManualHistory(index, delta) {
+        const item = manualOrders[index];
+        const next = item.quantity + delta;
+
+        if (next <= 0) {
+            if (confirm('この手入力商品を履歴から削除しますか？')) {
+                item.quantity = 0;
+                // 配列からは消さない（IDズレ防止のためquantity=0で非表示にする運用）
+            } else {
+                return;
+            }
+        } else {
+            item.quantity = next;
+        }
+
+        saveData();
+        renderHistory();
+    }
+
+    /**
+     * データリセット
+     */
+    function resetAllData() {
+        if (confirm('本当に全てのデータを削除してよろしいですか？\nこの操作は取り消せません。')) {
+            localStorage.removeItem('dalimaOrderData');
+            orders = {};
+            manualOrders = [];
+            
+            // UIリセット
+            document.querySelectorAll('.item-count').forEach(el => el.textContent = '0');
+            // 検索エリアリセット
+            document.getElementById('search-input').value = '';
+            handleSearch();
+            
+            renderHistory();
+            alert('リセットしました');
+        }
+    }
 </script>
 
 </body>
