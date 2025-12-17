@@ -317,7 +317,11 @@
         .btn-reset {
             background-color: #90A4AE;
             color: white;
-            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+        .btn-reset-past {
+            background-color: #ef5350; /* 赤色 */
+            color: white;
             font-size: 0.9rem;
         }
 
@@ -627,7 +631,7 @@
 
         <div class="section">
             <h2>メニュー手入力</h2>
-            <input type="text" id="manual-name" placeholder="商品名 (例: まかない)">
+            <input type="text" id="manual-name" placeholder="商品名 (例: 裏メニュー)">
             <div class="manual-entry-row">
                 <input type="number" id="manual-price" placeholder="金額 (円)" style="flex:1">
                 <input type="number" id="manual-count" placeholder="個数" value="1" style="width: 80px;">
@@ -639,8 +643,9 @@
         <div id="menu-container">
             </div>
 
-        <div style="text-align:center; padding-bottom:30px;">
-            <button class="btn btn-reset" onclick="resetAllData()">データを全削除してリセット</button>
+        <div style="text-align:center; padding-bottom:30px; display:flex; flex-direction:column; gap:10px; margin-top:20px;">
+            <button class="btn btn-reset" onclick="resetCurrentSession()">現在の注文履歴を削除</button>
+            <button class="btn btn-reset-past" onclick="clearPastHistory()">過去の注文履歴を削除</button>
         </div>
     </div>
 
@@ -855,6 +860,7 @@
     let orders = {};
     let manualOrders = [];
     let pastOrders = [];
+    let confirmedItems = []; // 確定済みだが未会計のアイテム
 
     window.onload = function() {
         renderMenu();
@@ -1035,14 +1041,71 @@
 
         saveData(); 
         renderHistory();
+        alert('注文履歴に反映しました');
         document.getElementById('history-section').scrollIntoView({ behavior: 'smooth' });
     }
 
     function confirmOrder() {
-        saveData();
-        renderHistory();
-        alert('注文内容を保存しました！');
-        document.getElementById('history-section').scrollIntoView({ behavior: 'smooth' });
+        let hasNewOrders = false;
+
+        // 1. 通常メニューの合算
+        for (const [id, count] of Object.entries(orders)) {
+            if (count > 0) {
+                hasNewOrders = true;
+                const menuIndex = parseInt(id.replace('menu-', ''));
+                const menuItem = RAW_MENU_DATA[menuIndex];
+                
+                // 既存のconfirmedItemsに同じIDがあれば合算、なければ新規追加
+                const existing = confirmedItems.find(item => item.id === id);
+                if (existing) {
+                    existing.count += count;
+                } else {
+                    confirmedItems.push({
+                        id: id,
+                        name: menuItem.n,
+                        price: menuItem.p,
+                        count: count,
+                        isManual: false
+                    });
+                }
+            }
+        }
+
+        // 2. 手入力メニューの合算
+        manualOrders.forEach(item => {
+            if (item.quantity > 0) {
+                hasNewOrders = true;
+                // 手入力はIDが一意なのでそのまま追加（あるいは名前・金額でマージも可だが今回は追加）
+                confirmedItems.push({
+                    id: item.id,
+                    name: item.name,
+                    price: item.price,
+                    count: item.quantity,
+                    isManual: true
+                });
+            }
+        });
+
+        if (!hasNewOrders && confirmedItems.length === 0) {
+            alert('注文が入力されていません');
+            return;
+        }
+        
+        if (hasNewOrders) {
+            // カウンターのリセット
+            orders = {};
+            manualOrders = [];
+            
+            // 画面上のカウンター表示を0に戻す
+            document.querySelectorAll('.item-count').forEach(el => el.textContent = '0');
+
+            saveData();
+            renderHistory();
+            alert('注文を確定し、履歴に追加しました。');
+            document.getElementById('history-section').scrollIntoView({ behavior: 'smooth' });
+        } else {
+            alert('新しい注文はありません。');
+        }
     }
 
     /* --- 会計・共有機能 --- */
@@ -1060,6 +1123,13 @@
         let items = [];
         let total = 0;
         
+        // 確定済みアイテム
+        confirmedItems.forEach(item => {
+            total += item.price * item.count;
+            items.push({name: item.name, price: item.price, count: item.count});
+        });
+
+        // 現在入力中のメニュー
         RAW_MENU_DATA.forEach(item => {
             const count = orders[item.id] || 0;
             if (count > 0) {
@@ -1067,6 +1137,8 @@
                 items.push({name: item.n, price: item.p, count: count});
             }
         });
+
+        // 現在入力中の手入力
         manualOrders.forEach(item => {
             if (item.quantity > 0) {
                 total += item.price * item.quantity;
@@ -1139,6 +1211,7 @@
         // 現在の状態をリセット
         orders = {};
         manualOrders = [];
+        confirmedItems = [];
         
         saveData();
         
@@ -1155,7 +1228,8 @@
         const data = {
             orders: orders,
             manualOrders: manualOrders,
-            pastOrders: pastOrders
+            pastOrders: pastOrders,
+            confirmedItems: confirmedItems
         };
         localStorage.setItem('dalimaOrderData', JSON.stringify(data));
     }
@@ -1167,6 +1241,7 @@
             orders = data.orders || {};
             manualOrders = data.manualOrders || [];
             pastOrders = data.pastOrders || [];
+            confirmedItems = data.confirmedItems || [];
 
             for (const [id, count] of Object.entries(orders)) {
                 const el = document.getElementById(`count-${id}`);
@@ -1184,6 +1259,32 @@
         let total = 0;
         let hasItem = false;
 
+        // 1. 確定済みアイテムの表示
+        confirmedItems.forEach((item, index) => {
+            hasItem = true;
+            const sum = item.price * item.count;
+            total += sum;
+            
+            const li = document.createElement('li');
+            li.className = 'history-item';
+            li.innerHTML = `
+                <div class="history-name">
+                    ${item.name}<br>
+                    <span style="font-size:0.8rem; color:#666; font-weight:normal;">@¥${item.price.toLocaleString()}</span>
+                </div>
+                <div class="history-details">
+                    <div class="counter-control" style="background:none; padding:0; justify-content:flex-end;">
+                         <button class="btn-circle" style="width:28px; height:28px; font-size:1rem; background:#ccc;" onclick="updateConfirmedItem(${index}, -1)">-</button>
+                         <span style="min-width:20px; text-align:center;">${item.count}</span>
+                         <button class="btn-circle" style="width:28px; height:28px; font-size:1rem;" onclick="updateConfirmedItem(${index}, 1)">+</button>
+                    </div>
+                    <div style="margin-top:5px; font-weight:bold;">¥${sum.toLocaleString()}</div>
+                </div>
+            `;
+            list.appendChild(li);
+        });
+
+        // 2. 現在入力中（未確定）のメニュー
         RAW_MENU_DATA.forEach(item => {
             const count = orders[item.id] || 0;
             if (count > 0) {
@@ -1194,6 +1295,7 @@
             }
         });
 
+        // 3. 現在入力中（未確定）の手入力
         manualOrders.forEach((item, index) => {
             if (item.quantity > 0) {
                 hasItem = true;
@@ -1208,6 +1310,20 @@
         }
 
         document.getElementById('grand-total').textContent = `合計: ¥${total.toLocaleString()}`;
+    }
+
+    // 確定済みアイテムの数量変更
+    function updateConfirmedItem(index, delta) {
+        const item = confirmedItems[index];
+        const next = item.count + delta;
+        if (next <= 0) {
+            if (!confirm('この確定済み商品を履歴から削除しますか？')) return;
+            confirmedItems.splice(index, 1);
+        } else {
+            item.count = next;
+        }
+        saveData();
+        renderHistory();
     }
 
     function addItemToHistoryList(parent, name, price, count, sum, id, isManual) {
@@ -1255,17 +1371,27 @@
         renderHistory();
     }
 
-    function resetAllData() {
-        if (confirm('本当に全てのデータ（過去の注文履歴含む）を削除してよろしいですか？')) {
-            localStorage.removeItem('dalimaOrderData');
+    function resetCurrentSession() {
+        if (confirm('「現在の注文履歴」を全て削除してよろしいですか？\n※過去の履歴（会計済）は削除されません。')) {
             orders = {};
             manualOrders = [];
-            pastOrders = [];
+            confirmedItems = [];
             document.querySelectorAll('.item-count').forEach(el => el.textContent = '0');
             document.getElementById('search-input').value = '';
+            
+            saveData();
             handleSearch();
             renderHistory();
-            alert('リセットしました');
+            alert('現在の注文をリセットしました');
+        }
+    }
+
+    function clearPastHistory() {
+        if (confirm('「過去の注文履歴」を全て削除してよろしいですか？\n※この操作は取り消せません。')) {
+            pastOrders = [];
+            saveData();
+            renderPastOrders();
+            alert('過去の履歴を削除しました');
         }
     }
 
