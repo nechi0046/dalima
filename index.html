@@ -10,8 +10,8 @@
             --primary-light: #FFB74D;
             --accent-color: #F57C00;
             --confirm-color: #D32F2F; /* 確定・会計ボタンの赤 */
-            --share-color: #00C853;   /* 共有ボタン（LINEっぽい緑） */
-            --bg-color: #FFFDE7;      /* 優しい黄色 */
+            --share-color: #00C853;    /* 共有ボタン（LINEっぽい緑） */
+            --bg-color: #FFFDE7;       /* 優しい黄色 */
             --text-color: #333;
             --white: #ffffff;
             --gray-light: #f5f5f5;
@@ -131,6 +131,18 @@
         .menu-list button:active {
             background: #f0f0f0;
         }
+        
+        /* リセットボタンのスタイル */
+        .menu-list .reset-btn {
+            color: var(--confirm-color);
+            font-weight: bold;
+        }
+        .menu-list .reset-btn-all {
+            color: #555;
+            font-weight: normal;
+            font-size: 0.9rem;
+        }
+
 
         /* コンテナ */
         .container {
@@ -330,6 +342,7 @@
             content: '+';
             font-size: 1.5rem;
             font-weight: normal;
+            color: #333;
         }
         .accordion-l.active .accordion-header-l::after {
             content: '-';
@@ -500,10 +513,12 @@
         .past-order-content {
             padding: 10px 15px;
             background: #fff;
-            display: none;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
         }
         .past-order-content.open {
-            display: block;
+            max-height: 1000px; /* 十分な高さ (展開時) */
         }
         .past-total {
             text-align: right;
@@ -522,6 +537,8 @@
     <ul class="menu-list">
         <li><button onclick="showMainView(); toggleMenu();">現在の注文入力</button></li>
         <li><button onclick="showHistoryView(); toggleMenu();">過去の注文履歴</button></li>
+        <li style="border-top: 1px solid #eee;"><button class="reset-btn" onclick="resetCurrentOrder(); toggleMenu();">現在の注文をリセット</button></li>
+        <li><button class="reset-btn-all" onclick="resetAllDataConfirm(); toggleMenu();">過去の履歴も全削除してリセット</button></li>
         <li><button onclick="toggleMenu()">閉じる</button></li>
     </ul>
 </nav>
@@ -584,7 +601,7 @@
             </div>
 
         <div style="text-align:center; padding-bottom:30px;">
-            <button class="btn btn-reset" onclick="resetAllData()">データを全削除してリセット</button>
+            <button class="btn btn-reset" onclick="resetCurrentOrder()">現在の注文をリセット</button>
         </div>
     </div>
 
@@ -796,8 +813,6 @@
         
         // --- 注文履歴の折りたたみ機能初期化 ---
         document.getElementById('history-header').addEventListener('click', toggleHistoryCollapse);
-        // 最初は展開しておく (初期クラス設定により)
-        // itemsがなければ最初から折りたたんでおくロジックも追加可能だが、今回は展開でスタート
         // ------------------------------------
     };
 
@@ -896,6 +911,13 @@
                 <button class="btn-circle" onclick="updateCount('${item.id}', 1)">+</button>
             </div>
         `;
+        // カウンターの初期値をセット
+        if (orders[item.id]) {
+            setTimeout(() => {
+                const counter = document.getElementById(`count-${item.id}`);
+                if (counter) counter.textContent = orders[item.id];
+            }, 0);
+        }
         return el;
     }
 
@@ -908,8 +930,361 @@
         if (mainCounter) mainCounter.textContent = orders[id];
         const searchCounter = document.getElementById(`search-count-${id}`);
         if (searchCounter) searchCounter.textContent = orders[id];
+
+        saveData();
+        renderOrderList();
     }
 
+    /* --- 注文データ処理 --- */
+
+    function getItemById(id) {
+        const index = parseInt(id.replace('menu-', ''));
+        return RAW_MENU_DATA[index];
+    }
+
+    function calculateTotal() {
+        let total = 0;
+        
+        // メニュー注文
+        for (const id in orders) {
+            const count = orders[id];
+            if (count > 0) {
+                const item = getItemById(id);
+                if (item) total += item.p * count;
+            }
+        }
+        
+        // 手動注文
+        manualOrders.forEach(item => {
+            total += item.price * item.count;
+        });
+
+        return total;
+    }
+
+    function renderOrderList() {
+        const list = document.getElementById('history-list');
+        list.innerHTML = '';
+        let hasOrder = false;
+        
+        // メニュー注文
+        for (const id in orders) {
+            const count = orders[id];
+            if (count > 0) {
+                const item = getItemById(id);
+                if (item) {
+                    const listItem = document.createElement('li');
+                    listItem.className = 'history-item';
+                    const nameDesc = item.s ? `(${item.s}) ${item.n}` : item.n;
+                    const subtotal = item.p * count;
+                    listItem.innerHTML = `
+                        <div class="history-name">${nameDesc}</div>
+                        <div class="history-details">
+                            ${count}個 @ ¥${item.p.toLocaleString()}<br>
+                            ¥${subtotal.toLocaleString()}
+                        </div>
+                    `;
+                    list.appendChild(listItem);
+                    hasOrder = true;
+                }
+            }
+        }
+
+        // 手動注文
+        manualOrders.forEach((item, index) => {
+            const listItem = document.createElement('li');
+            listItem.className = 'history-item';
+            const subtotal = item.price * item.count;
+            listItem.innerHTML = `
+                <div class="history-name">${item.name} <span style="color:blue;">(手入力)</span></div>
+                <div class="history-details">
+                    ${item.count}個 @ ¥${item.price.toLocaleString()}<br>
+                    ¥${subtotal.toLocaleString()}
+                </div>
+            `;
+            list.appendChild(listItem);
+            hasOrder = true;
+        });
+
+        if (!hasOrder) {
+            list.innerHTML = '<li style="text-align:center; color:#999; padding:20px;">履歴はありません</li>';
+        }
+
+        // 合計金額の更新
+        document.getElementById('grand-total').textContent = `合計: ¥${calculateTotal().toLocaleString()}`;
+    }
+
+    function addManualItem() {
+        const nameInput = document.getElementById('manual-name');
+        const priceInput = document.getElementById('manual-price');
+        const countInput = document.getElementById('manual-count');
+
+        const name = nameInput.value.trim();
+        const price = parseInt(priceInput.value);
+        const count = parseInt(countInput.value);
+
+        if (name === "" || isNaN(price) || price < 0 || isNaN(count) || count <= 0) {
+            alert("商品名、金額、個数を正しく入力してください。");
+            return;
+        }
+
+        manualOrders.push({ name: name, price: price, count: count });
+        
+        nameInput.value = '';
+        priceInput.value = '';
+        countInput.value = '1';
+
+        saveData();
+        renderOrderList();
+    }
+    
+    function createOrderSummary() {
+        const summary = [];
+        let total = 0;
+        
+        // メニュー注文
+        for (const id in orders) {
+            const count = orders[id];
+            if (count > 0) {
+                const item = getItemById(id);
+                if (item) {
+                    const nameDesc = item.s ? `(${item.s}) ${item.n}` : item.n;
+                    const price = item.p;
+                    const subtotal = price * count;
+                    summary.push({ name: nameDesc, price: price, count: count, subtotal: subtotal });
+                    total += subtotal;
+                }
+            }
+        }
+        
+        // 手動注文
+        manualOrders.forEach(item => {
+            const subtotal = item.price * item.count;
+            summary.push({ name: item.name + ' (手入力)', price: item.price, count: item.count, subtotal: subtotal });
+            total += subtotal;
+        });
+        
+        return { items: summary, total: total };
+    }
+
+    function checkoutOrder() {
+        const summary = createOrderSummary();
+
+        if (summary.items.length === 0) {
+            alert('注文履歴がありません。');
+            return;
+        }
+
+        const confirmText = summary.items.map(item => `${item.name} x ${item.count} = ¥${item.subtotal.toLocaleString()}`).join('\n');
+        
+        if (confirm(`以下の注文を「会計済」として過去の履歴に保存しますか？\n\n---現在の注文---\n${confirmText}\n\n合計: ¥${summary.total.toLocaleString()}\n\n※現在の注文はリセットされます。`)) {
+            // 履歴に保存
+            pastOrders.unshift({
+                date: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
+                items: summary.items,
+                total: summary.total
+            });
+            
+            // 現在の注文をリセット
+            orders = {};
+            manualOrders = [];
+            
+            saveData();
+            renderOrderList();
+            
+            // カウンターもリセット
+            RAW_MENU_DATA.forEach(item => {
+                const counter = document.getElementById(`count-${item.id}`);
+                if (counter) counter.textContent = '0';
+            });
+            
+            alert('会計処理が完了し、現在の注文はリセットされました。');
+        }
+    }
+    
+    function confirmOrder() {
+        const summary = createOrderSummary();
+
+        if (summary.items.length === 0) {
+            alert('注文履歴がありません。');
+            return;
+        }
+
+        const confirmText = summary.items.map(item => `${item.name} x ${item.count} = ¥${item.subtotal.toLocaleString()}`).join('\n');
+        
+        alert(`【注文確定】\n\n以下の注文で確定します:\n\n---現在の注文---\n${confirmText}\n\n合計: ¥${summary.total.toLocaleString()}\n\n※この操作では注文データはリセットされません。会計に進んでください。`);
+    }
+
+    function shareOrder() {
+        const summary = createOrderSummary();
+        
+        if (summary.items.length === 0) {
+            alert('注文履歴がありません。');
+            return;
+        }
+        
+        let text = '【ダリマ注文】\n';
+        text += new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) + '\n\n';
+        
+        summary.items.forEach(item => {
+            text += `${item.name} ${item.count}個 (¥${item.subtotal.toLocaleString()})\n`;
+        });
+        
+        text += `\n--- 合計 --- \n¥${summary.total.toLocaleString()}\n\n`;
+
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('注文内容をクリップボードにコピーしました！LINEなどで共有してください。');
+            }).catch(err => {
+                console.error('クリップボードへのコピーに失敗:', err);
+                prompt('クリップボードへのコピーに失敗しました。以下の内容を手動でコピーしてください:', text);
+            });
+        } else {
+            prompt('クリップボードへのコピーはブラウザがサポートしていません。以下の内容を手動でコピーしてください:', text);
+        }
+    }
+
+    /* --- 永続化（ローカルストレージ） --- */
+
+    function saveData() {
+        localStorage.setItem('darumaOrders', JSON.stringify(orders));
+        localStorage.setItem('darumaManualOrders', JSON.stringify(manualOrders));
+        localStorage.setItem('darumaPastOrders', JSON.stringify(pastOrders));
+        renderOrderList();
+    }
+
+    function loadData() {
+        const storedOrders = localStorage.getItem('darumaOrders');
+        const storedManual = localStorage.getItem('darumaManualOrders');
+        const storedPast = localStorage.getItem('darumaPastOrders');
+
+        if (storedOrders) orders = JSON.parse(storedOrders);
+        if (storedManual) manualOrders = JSON.parse(storedManual);
+        if (storedPast) pastOrders = JSON.parse(storedPast);
+        
+        // カウンターの表示を更新
+        for (const id in orders) {
+            const counter = document.getElementById(`count-${id}`);
+            if (counter) counter.textContent = orders[id];
+        }
+
+        renderOrderList();
+        renderPastOrders(); // 過去履歴画面の表示を更新
+    }
+    
+    // 変更点: 現在の注文のみをリセットする関数
+    function resetCurrentOrder() {
+        if (confirm('現在の注文履歴のみをリセット（削除）してもよろしいですか？\n※過去の注文履歴は削除されません。')) {
+            orders = {};
+            manualOrders = [];
+            saveData();
+            
+            // カウンターもリセット
+            RAW_MENU_DATA.forEach(item => {
+                const counter = document.getElementById(`count-${item.id}`);
+                if (counter) counter.textContent = '0';
+                // 検索結果カウンターもリセット (必要であれば)
+                const searchCounter = document.getElementById(`search-count-${item.id}`);
+                if (searchCounter) searchCounter.textContent = '0';
+            });
+            
+            renderOrderList();
+            alert('現在の注文履歴がリセットされました。');
+        }
+    }
+
+    // 変更点: 全データをリセットする関数 (確認付き)
+    function resetAllDataConfirm() {
+        if (confirm('【警告】現在の注文履歴と、過去の注文履歴の**全て**を削除してリセットします。本当によろしいですか？')) {
+            resetAllData();
+        }
+    }
+
+    function resetAllData() {
+        // 現在の注文をリセット
+        orders = {};
+        manualOrders = [];
+        
+        // 過去の履歴をリセット
+        pastOrders = [];
+        
+        saveData();
+        
+        // カウンターの表示を更新
+        RAW_MENU_DATA.forEach(item => {
+            const counter = document.getElementById(`count-${item.id}`);
+            if (counter) counter.textContent = '0';
+            const searchCounter = document.getElementById(`search-count-${item.id}`);
+            if (searchCounter) searchCounter.textContent = '0';
+        });
+        
+        renderOrderList();
+        renderPastOrders();
+        
+        alert('全ての注文データがリセットされました。');
+    }
+    
+    /* --- 過去履歴画面 --- */
+
+    function renderPastOrders() {
+        const container = document.getElementById('past-list-container');
+        container.innerHTML = '';
+
+        if (pastOrders.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#999;">保存された履歴はありません</p>';
+            return;
+        }
+
+        pastOrders.forEach((order, index) => {
+            const block = document.createElement('div');
+            block.className = 'past-order-block';
+            
+            const header = document.createElement('div');
+            header.className = 'past-order-header';
+            header.innerHTML = `
+                <span>${order.date}</span>
+                <span>¥${order.total.toLocaleString()}</span>
+            `;
+            header.onclick = () => {
+                const content = document.getElementById(`past-content-${index}`);
+                content.classList.toggle('open');
+            };
+            
+            const content = document.createElement('div');
+            content.className = 'past-order-content';
+            content.id = `past-content-${index}`;
+
+            const list = document.createElement('ul');
+            list.className = 'history-list';
+            list.style.border = 'none';
+
+            order.items.forEach(item => {
+                const listItem = document.createElement('li');
+                listItem.className = 'history-item';
+                listItem.style.padding = '5px 0';
+                listItem.innerHTML = `
+                    <div class="history-name" style="font-size:0.9rem;">${item.name}</div>
+                    <div class="history-details" style="min-width:70px; font-size:0.8rem;">
+                        ${item.count}個 / ¥${item.subtotal.toLocaleString()}
+                    </div>
+                `;
+                list.appendChild(listItem);
+            });
+            
+            const totalDiv = document.createElement('div');
+            totalDiv.className = 'past-total';
+            totalDiv.textContent = `合計: ¥${order.total.toLocaleString()}`;
+
+            content.appendChild(list);
+            content.appendChild(totalDiv);
+            block.appendChild(header);
+            block.appendChild(content);
+            container.appendChild(block);
+        });
+    }
+
+    /* --- 検索処理 --- */
+    
     function handleSearch() {
         const text = document.getElementById('search-input').value.toLowerCase().trim();
         const resultsArea = document.getElementById('search-results-area');
@@ -928,329 +1303,34 @@
         let hits = 0;
 
         RAW_MENU_DATA.forEach(item => {
-            if (item.n.toLowerCase().includes(text) || (item.m && item.m.includes(text))) {
+            if (item.n.toLowerCase().includes(text) || (item.m && item.m.toLowerCase().includes(text)) || (item.s && item.s.toLowerCase().includes(text)) || item.l.toLowerCase().includes(text)) {
                 hits++;
-                const div = document.createElement('div');
-                div.className = 'menu-item';
-                div.style.background = '#fff';
-                div.style.borderBottom = '1px solid #eee';
+                const el = document.createElement('div');
+                el.className = 'menu-item';
+                el.dataset.name = item.n;
                 const desc = item.s ? `<span class="item-desc">${item.s}</span>` : '';
                 const currentCount = orders[item.id] || 0;
-                div.innerHTML = `
-                    <div class="item-info"><span style="font-size:0.8rem; color:#888;">${item.l}${item.m ? ' > '+item.m : ''}</span><br>${desc}<span class="item-name">${item.n}</span><div class="item-price">¥${item.p.toLocaleString()}</div></div>
+                
+                el.innerHTML = `
+                    <div class="item-info">
+                        <span style="font-size:0.7rem; color:#aaa;">[${item.l} > ${item.m || '一般'}]</span><br>
+                        ${desc}<span class="item-name">${item.n}</span>
+                        <div class="item-price">¥${item.p.toLocaleString()}</div>
+                    </div>
                     <div class="counter-control">
                         <button class="btn-circle" onclick="updateCount('${item.id}', -1)">-</button>
                         <span class="item-count" id="search-count-${item.id}">${currentCount}</span>
                         <button class="btn-circle" onclick="updateCount('${item.id}', 1)">+</button>
                     </div>
                 `;
-                resultsList.appendChild(div);
-            }
-        });
-        if (hits === 0) resultsList.innerHTML = '<div style="padding:10px; text-align:center; color:#666;">見つかりませんでした</div>';
-    }
-
-    function addManualItem() {
-        const name = document.getElementById('manual-name').value;
-        const price = parseInt(document.getElementById('manual-price').value);
-        const count = parseInt(document.getElementById('manual-count').value);
-
-        if (!name || isNaN(price) || isNaN(count) || count < 1) {
-            alert('入力内容を確認してください');
-            return;
-        }
-
-        const id = `manual-${Date.now()}`;
-        manualOrders.push({ id: id, name: name, price: price, quantity: count });
-
-        document.getElementById('manual-name').value = '';
-        document.getElementById('manual-price').value = '';
-        document.getElementById('manual-count').value = 1;
-
-        saveData(); 
-        renderHistory();
-        document.getElementById('history-section').scrollIntoView({ behavior: 'smooth' });
-    }
-
-    function confirmOrder() {
-        saveData();
-        renderHistory();
-        alert('注文内容を保存しました！');
-        document.getElementById('history-section').scrollIntoView({ behavior: 'smooth' });
-    }
-
-    /* --- 会計・共有機能 --- */
-
-    function generateOrderText(total, items) {
-        let text = "【ダリマ注文リスト】\n";
-        items.forEach(i => {
-            text += `・${i.name} × ${i.count} (¥${(i.price * i.count).toLocaleString()})\n`;
-        });
-        text += `\n合計金額: ¥${total.toLocaleString()}`;
-        return text;
-    }
-
-    function getCurrentOrderItems() {
-        let items = [];
-        let total = 0;
-        
-        RAW_MENU_DATA.forEach(item => {
-            const count = orders[item.id] || 0;
-            if (count > 0) {
-                total += item.p * count;
-                items.push({name: item.n, price: item.p, count: count});
-            }
-        });
-        manualOrders.forEach(item => {
-            if (item.quantity > 0) {
-                total += item.price * item.quantity;
-                items.push({name: item.name, price: item.price, count: item.quantity});
-            }
-        });
-        return { items, total };
-    }
-
-    async function shareOrder() {
-        const { items, total } = getCurrentOrderItems();
-        if (items.length === 0) {
-            alert('注文がありません');
-            return;
-        }
-        const text = generateOrderText(total, items);
-
-        // Web Share API (スマホ用)
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: '注文リスト',
-                    text: text
-                });
-            } catch (err) {
-                console.log('共有キャンセル', err);
-            }
-        } else {
-            // PC等用フォールバック: クリップボードコピー
-            copyToClipboard(text);
-        }
-    }
-
-    function copyToClipboard(text) {
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(text).then(() => {
-                alert('注文内容をコピーしました！\nLINEなどに貼り付けてください。');
-            });
-        } else {
-            // 古いブラウザ用
-            const ta = document.createElement('textarea');
-            ta.value = text;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            alert('注文内容をコピーしました！');
-        }
-    }
-
-    function checkoutOrder() {
-        const { items, total } = getCurrentOrderItems();
-        if (items.length === 0) {
-            alert('注文がありません');
-            return;
-        }
-
-        if (!confirm('会計済として処理しますか？\n\n・現在の注文内容は「過去の注文履歴」に移動します。\n・現在のカウンターはリセットされます。')) {
-            return;
-        }
-
-        // 履歴に追加
-        const historyRecord = {
-            date: new Date().toLocaleString('ja-JP'),
-            items: items,
-            total: total
-        };
-        pastOrders.unshift(historyRecord); // 先頭に追加
-
-        // 現在の状態をリセット
-        orders = {};
-        manualOrders = [];
-        
-        saveData();
-        
-        // UIリセット
-        document.querySelectorAll('.item-count').forEach(el => el.textContent = '0');
-        renderHistory();
-
-        alert('会計処理が完了しました。\nメニューの「過去の注文履歴」から確認できます。');
-    }
-
-    /* --- データ保存・読み込み --- */
-
-    function saveData() {
-        const data = {
-            orders: orders,
-            manualOrders: manualOrders,
-            pastOrders: pastOrders
-        };
-        localStorage.setItem('dalimaOrderData', JSON.stringify(data));
-    }
-
-    function loadData() {
-        const json = localStorage.getItem('dalimaOrderData');
-        if (json) {
-            const data = JSON.parse(json);
-            orders = data.orders || {};
-            manualOrders = data.manualOrders || [];
-            pastOrders = data.pastOrders || [];
-
-            for (const [id, count] of Object.entries(orders)) {
-                const el = document.getElementById(`count-${id}`);
-                if (el) el.textContent = count;
-            }
-        }
-        renderHistory();
-    }
-
-    /* --- 履歴描画 --- */
-
-    function renderHistory() {
-        const list = document.getElementById('history-list');
-        list.innerHTML = '';
-        let total = 0;
-        let hasItem = false;
-
-        RAW_MENU_DATA.forEach(item => {
-            const count = orders[item.id] || 0;
-            if (count > 0) {
-                hasItem = true;
-                const sum = item.p * count;
-                total += sum;
-                addItemToHistoryList(list, item.n, item.p, count, sum, item.id, false);
+                resultsList.appendChild(el);
             }
         });
 
-        manualOrders.forEach((item, index) => {
-            if (item.quantity > 0) {
-                hasItem = true;
-                const sum = item.price * item.quantity;
-                total += sum;
-                addItemToHistoryList(list, item.name, item.price, item.quantity, sum, index, true);
-            }
-        });
-
-        if (!hasItem) {
-            list.innerHTML = '<li style="text-align:center; color:#999; padding:20px;">履歴はありません</li>';
-        }
-
-        document.getElementById('grand-total').textContent = `合計: ¥${total.toLocaleString()}`;
-    }
-
-    function addItemToHistoryList(parent, name, price, count, sum, id, isManual) {
-        const li = document.createElement('li');
-        li.className = 'history-item';
-        const updateFunc = isManual ? 'updateManualHistory' : 'updateMenuHistory';
-        li.innerHTML = `
-            <div class="history-name">${name}<br><span style="font-size:0.8rem; color:#666; font-weight:normal;">@¥${price.toLocaleString()}</span></div>
-            <div class="history-details">
-                <div class="counter-control" style="background:none; padding:0; justify-content:flex-end;">
-                     <button class="btn-circle" style="width:28px; height:28px; font-size:1rem; background:#ccc;" onclick="${updateFunc}('${id}', -1)">-</button>
-                     <span style="min-width:20px; text-align:center;">${count}</span>
-                     <button class="btn-circle" style="width:28px; height:28px; font-size:1rem;" onclick="${updateFunc}('${id}', 1)">+</button>
-                </div>
-                <div style="margin-top:5px; font-weight:bold;">¥${sum.toLocaleString()}</div>
-            </div>
-        `;
-        parent.appendChild(li);
-    }
-
-    function updateMenuHistory(id, delta) {
-        const current = orders[id] || 0;
-        const next = current + delta;
-        if (next <= 0) {
-            if (!confirm('この商品を履歴から削除しますか？')) return;
-            orders[id] = 0;
-        } else {
-            orders[id] = next;
-        }
-        document.getElementById(`count-${id}`).textContent = orders[id];
-        saveData();
-        renderHistory();
-    }
-
-    function updateManualHistory(index, delta) {
-        const item = manualOrders[index];
-        const next = item.quantity + delta;
-        if (next <= 0) {
-            if (!confirm('この手入力商品を履歴から削除しますか？')) return;
-            item.quantity = 0;
-        } else {
-            item.quantity = next;
-        }
-        saveData();
-        renderHistory();
-    }
-
-    function resetAllData() {
-        if (confirm('本当に全てのデータ（過去の注文履歴含む）を削除してよろしいですか？')) {
-            localStorage.removeItem('dalimaOrderData');
-            orders = {};
-            manualOrders = [];
-            pastOrders = [];
-            document.querySelectorAll('.item-count').forEach(el => el.textContent = '0');
-            document.getElementById('search-input').value = '';
-            handleSearch();
-            renderHistory();
-            alert('リセットしました');
+        if (hits === 0) {
+            resultsList.innerHTML = '<p style="text-align:center; color:#999; padding:10px;">一致するメニューが見つかりませんでした。</p>';
         }
     }
-
-    /* --- 過去の履歴画面 --- */
-    function renderPastOrders() {
-        const container = document.getElementById('past-list-container');
-        container.innerHTML = '';
-
-        if (pastOrders.length === 0) {
-            container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">保存された履歴はありません</p>';
-            return;
-        }
-
-        pastOrders.forEach((record, idx) => {
-            const block = document.createElement('div');
-            block.className = 'past-order-block';
-
-            // ヘッダー
-            const header = document.createElement('div');
-            header.className = 'past-order-header';
-            header.innerHTML = `<span>${record.date}</span><span>¥${record.total.toLocaleString()}</span>`;
-            header.onclick = () => {
-                document.getElementById(`past-content-${idx}`).classList.toggle('open');
-            };
-
-            // 内容
-            const content = document.createElement('div');
-            content.className = 'past-order-content';
-            content.id = `past-content-${idx}`;
-            
-            let html = '<ul style="list-style:none; padding:0;">';
-            record.items.forEach(item => {
-                html += `<li style="display:flex; justify-content:space-between; border-bottom:1px solid #f5f5f5; padding:5px 0;">
-                    <span>${item.name} x${item.count}</span>
-                    <span>¥${(item.price * item.count).toLocaleString()}</span>
-                </li>`;
-            });
-            html += '</ul>';
-            
-            // 再計算用合計（念のため）
-            html += `<div class="past-total">合計: ¥${record.total.toLocaleString()}</div>`;
-
-            content.innerHTML = html;
-            block.appendChild(header);
-            block.appendChild(content);
-            container.appendChild(block);
-        });
-    }
-
 </script>
-
 </body>
 </html>
-
