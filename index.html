@@ -9,8 +9,9 @@
             --primary-color: #FF9800; /* オレンジ */
             --primary-light: #FFB74D;
             --accent-color: #F57C00;
-            --confirm-color: #D32F2F; /* 確定ボタンの赤 */
-            --bg-color: #FFFDE7; /* 優しい黄色 */
+            --confirm-color: #D32F2F; /* 確定・会計ボタンの赤 */
+            --share-color: #00C853;   /* 共有ボタン（LINEっぽい緑） */
+            --bg-color: #FFFDE7;      /* 優しい黄色 */
             --text-color: #333;
             --white: #ffffff;
             --gray-light: #f5f5f5;
@@ -34,23 +35,101 @@
         header {
             background-color: var(--primary-color);
             color: var(--white);
-            padding: 15px;
+            padding: 10px 15px;
             text-align: center;
             box-shadow: var(--shadow);
             position: sticky;
             top: 0;
             z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 60px;
+        }
+
+        .header-menu-btn {
+            position: absolute;
+            left: 15px;
+            font-size: 1.8rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: white;
+            padding: 5px;
+        }
+
+        .header-content {
+            text-align: center;
         }
 
         .header-sub {
-            font-size: 0.8rem;
+            font-size: 0.7rem;
             opacity: 0.9;
         }
 
         .header-main {
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             font-weight: bold;
-            margin-top: 5px;
+        }
+
+        /* サイドメニュー（スライド式） */
+        #side-menu-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 199;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        #side-menu-overlay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        #side-menu {
+            position: fixed;
+            top: 0; left: -280px; bottom: 0;
+            width: 280px;
+            background: white;
+            z-index: 200;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            transition: left 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        #side-menu.active {
+            left: 0;
+        }
+
+        .menu-header {
+            background: var(--primary-color);
+            color: white;
+            padding: 20px;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .menu-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .menu-list li {
+            border-bottom: 1px solid #eee;
+        }
+        .menu-list button {
+            width: 100%;
+            text-align: left;
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            font-size: 1rem;
+            color: #333;
+            cursor: pointer;
+        }
+        .menu-list button:active {
+            background: #f0f0f0;
         }
 
         /* コンテナ */
@@ -58,6 +137,14 @@
             padding: 15px;
             max-width: 600px;
             margin: 0 auto;
+        }
+
+        /* 画面切り替え用 */
+        .view-section {
+            display: none;
+        }
+        .view-section.active {
+            display: block;
         }
 
         /* セクション共通 */
@@ -77,7 +164,7 @@
             margin-top: 0;
         }
 
-        /* 注文履歴 */
+        /* 注文履歴リスト */
         .history-list {
             list-style: none;
             padding: 0;
@@ -114,6 +201,30 @@
             padding-top: 10px;
         }
 
+        /* 会計・共有ボタンエリア */
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 25px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .btn-share {
+            background-color: var(--share-color);
+            color: white;
+            font-size: 1rem;
+            padding: 12px;
+        }
+
+        .btn-checkout {
+            background-color: #555; /* 誤操作防止のため少し地味に、あるいは警告色 */
+            color: white;
+            font-size: 1rem;
+            padding: 12px;
+        }
+
         /* 検索と手入力 */
         input[type="text"], input[type="number"] {
             width: 100%;
@@ -121,7 +232,7 @@
             margin-bottom: 10px;
             border: 1px solid #ddd;
             border-radius: 5px;
-            font-size: 16px; /* iOS zoom防止 */
+            font-size: 16px;
             background: #fafafa;
         }
 
@@ -154,7 +265,7 @@
 
         /* 検索結果エリア */
         #search-results-area {
-            display: none; /* 初期非表示 */
+            display: none;
             background: #fff3e0;
             border: 2px solid var(--primary-color);
             border-radius: 10px;
@@ -274,7 +385,7 @@
         }
 
         .item-price {
-            color: var(--confirm-color); /* 赤っぽく強調 */
+            color: var(--confirm-color);
             font-weight: bold;
         }
 
@@ -336,7 +447,6 @@
             gap: 10px;
             transition: transform 0.1s;
         }
-
         .fab-confirm:active {
             transform: scale(0.95);
         }
@@ -344,62 +454,129 @@
         .hidden {
             display: none !important;
         }
+
+        /* 過去の履歴スタイル */
+        .past-order-block {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+        .past-order-header {
+            background: #eee;
+            padding: 10px 15px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+        .past-order-content {
+            padding: 10px 15px;
+            background: #fff;
+            display: none;
+        }
+        .past-order-content.open {
+            display: block;
+        }
+        .past-total {
+            text-align: right;
+            font-weight: bold;
+            color: var(--confirm-color);
+            margin-top: 10px;
+        }
+
     </style>
 </head>
 <body>
 
+<div id="side-menu-overlay" onclick="toggleMenu()"></div>
+<nav id="side-menu">
+    <div class="menu-header">メニュー</div>
+    <ul class="menu-list">
+        <li><button onclick="showMainView(); toggleMenu();">現在の注文入力</button></li>
+        <li><button onclick="showHistoryView(); toggleMenu();">過去の注文履歴</button></li>
+        <li><button onclick="toggleMenu()">閉じる</button></li>
+    </ul>
+</nav>
+
 <header>
-    <div class="header-sub">チーム友達専用</div>
-    <div class="header-main">ダリマ注文カウンター</div>
+    <button class="header-menu-btn" onclick="toggleMenu()">☰</button>
+    <div class="header-content">
+        <div class="header-sub">チーム友達専用</div>
+        <div class="header-main">ダリマ注文カウンター</div>
+    </div>
 </header>
 
 <div class="container">
 
-    <div class="section" id="history-section">
-        <h2>注文履歴</h2>
-        <ul class="history-list" id="history-list">
-            <li style="text-align:center; color:#999; padding:20px;">履歴はありません</li>
-        </ul>
-        <div class="total-price" id="grand-total">合計: ¥0</div>
-    </div>
+    <div id="main-view" class="view-section active">
+        
+        <div class="section" id="history-section">
+            <h2>現在の注文履歴</h2>
+            <ul class="history-list" id="history-list">
+                <li style="text-align:center; color:#999; padding:20px;">履歴はありません</li>
+            </ul>
+            <div class="total-price" id="grand-total">合計: ¥0</div>
 
-    <div class="section">
-        <input type="text" id="search-input" placeholder="メニュー名で検索..." oninput="handleSearch()">
-    </div>
-
-    <div id="search-results-area">
-        <h3>検索結果</h3>
-        <div id="search-results-list"></div>
-    </div>
-
-    <div class="section">
-        <h2>メニュー手入力</h2>
-        <input type="text" id="manual-name" placeholder="商品名 (例: まかない)">
-        <div class="manual-entry-row">
-            <input type="number" id="manual-price" placeholder="金額 (円)" style="flex:1">
-            <input type="number" id="manual-count" placeholder="個数" value="1" style="width: 80px;">
-        </div>
-        <button class="btn btn-add" onclick="addManualItem()">リストに追加して注文</button>
-        <p style="font-size:0.8rem; color:#666; margin-top:5px;">※追加ボタンを押すと即座に注文履歴に反映されます</p>
-    </div>
-
-    <div id="menu-container">
+            <div class="action-buttons">
+                <button class="btn btn-share" onclick="shareOrder()">
+                    LINEで共有 / テキストをコピー
+                </button>
+                <button class="btn btn-checkout" onclick="checkoutOrder()">
+                    会計済（履歴に保存してリセット）
+                </button>
+            </div>
         </div>
 
-    <div style="text-align:center; padding-bottom:30px;">
-        <button class="btn btn-reset" onclick="resetAllData()">データを全削除してリセット</button>
+        <div class="section">
+            <input type="text" id="search-input" placeholder="メニュー名で検索..." oninput="handleSearch()">
+        </div>
+
+        <div id="search-results-area">
+            <h3>検索結果</h3>
+            <div id="search-results-list"></div>
+        </div>
+
+        <div class="section">
+            <h2>メニュー手入力</h2>
+            <input type="text" id="manual-name" placeholder="商品名 (例: まかない)">
+            <div class="manual-entry-row">
+                <input type="number" id="manual-price" placeholder="金額 (円)" style="flex:1">
+                <input type="number" id="manual-count" placeholder="個数" value="1" style="width: 80px;">
+            </div>
+            <button class="btn btn-add" onclick="addManualItem()">リストに追加して注文</button>
+            <p style="font-size:0.8rem; color:#666; margin-top:5px;">※追加ボタンを押すと即座に注文履歴に反映されます</p>
+        </div>
+
+        <div id="menu-container">
+            </div>
+
+        <div style="text-align:center; padding-bottom:30px;">
+            <button class="btn btn-reset" onclick="resetAllData()">データを全削除してリセット</button>
+        </div>
+    </div>
+
+    <div id="past-view" class="view-section">
+        <div class="section">
+            <h2>過去の注文履歴</h2>
+            <div id="past-list-container">
+                <p style="text-align:center; color:#999;">保存された履歴はありません</p>
+            </div>
+            <div style="text-align:center; margin-top:20px;">
+                <button class="btn" style="background:#ddd;" onclick="showMainView()">戻る</button>
+            </div>
+        </div>
     </div>
 
 </div>
 
-<button class="fab-confirm" onclick="confirmOrder()">
+<button class="fab-confirm" id="fab-confirm" onclick="confirmOrder()">
     <span>注文を確定する</span>
 </button>
 
 <script>
     /**
-     * [cite_start]CSVデータ [cite: 1]
-     * 大分類, 中分類, 小分類, 商品名, 値段
+     * CSVデータ
      */
     const RAW_MENU_DATA = [
         // ドリンク
@@ -474,7 +651,7 @@
         {l:"ドリンクメニュー", m:"ソフトドリンク", s:"", n:"アイスコーヒー", p:250},
         {l:"ドリンクメニュー", m:"ソフトドリンク", s:"", n:"ジンジャーエール", p:250},
         
-        // アジアンメニュー（中分類なし）
+        // アジアンメニュー
         {l:"アジアンメニュー", m:"", s:"", n:"タイ野菜炒め", p:780},
         {l:"アジアンメニュー", m:"", s:"", n:"アサリのバジル炒め", p:800},
         {l:"アジアンメニュー", m:"", s:"", n:"エビのガーリック炒め", p:890},
@@ -495,7 +672,7 @@
         {l:"アジアンメニュー", m:"", s:"", n:"タイラーメン", p:900},
         {l:"アジアンメニュー", m:"", s:"", n:"グリーンカレー", p:850},
 
-        // サラダ・天ぷら・ピラフ（中分類なし）
+        // サラダ・天ぷら・ピラフ
         {l:"サラダ・天ぷら・ピラフ", m:"", s:"", n:"野菜サラダ", p:450},
         {l:"サラダ・天ぷら・ピラフ", m:"", s:"", n:"チャナサラダ", p:450},
         {l:"サラダ・天ぷら・ピラフ", m:"", s:"", n:"トマトサラダ", p:450},
@@ -507,7 +684,7 @@
         {l:"サラダ・天ぷら・ピラフ", m:"", s:"", n:"なすの天ぷら", p:0},
         {l:"サラダ・天ぷら・ピラフ", m:"", s:"", n:"シーフードビリヤニ", p:990},
 
-        // タンドリー（中分類なし、小分類あり）
+        // タンドリー
         {l:"タンドリー", m:"", s:"2pc", n:"シークカバブ", p:450},
         {l:"タンドリー", m:"", s:"4pc", n:"シークカバブ", p:750},
         {l:"タンドリー", m:"", s:"2pc", n:"タンドリーチキン", p:550},
@@ -520,7 +697,7 @@
         {l:"タンドリー", m:"", s:"2pc", n:"タンドリー海老", p:550},
         {l:"タンドリー", m:"", s:"4pc", n:"タンドリー海老", p:1050},
 
-        // スナック（中分類なし）
+        // スナック
         {l:"スナック", m:"", s:"2pc", n:"フィッシュティッカ", p:550},
         {l:"スナック", m:"", s:"4pc", n:"フィッシュティッカ", p:1050},
         {l:"スナック", m:"", s:"7pc", n:"タンドリーミックスグリル", p:1550},
@@ -579,34 +756,48 @@
 
     let orders = {}; // { menu-id: quantity }
     let manualOrders = []; // [{id, name, price, quantity}]
+    let pastOrders = []; // 保存された過去の注文履歴
 
     window.onload = function() {
         renderMenu();
         loadData();
     };
 
-    /**
-     * メニュー描画
-     * 中分類がない場合は直下、ある場合はアコーディオン
-     */
+    /* --- メニュー・画面制御 --- */
+    function toggleMenu() {
+        document.getElementById('side-menu').classList.toggle('active');
+        document.getElementById('side-menu-overlay').classList.toggle('active');
+    }
+
+    function showMainView() {
+        document.getElementById('main-view').classList.add('active');
+        document.getElementById('past-view').classList.remove('active');
+        document.getElementById('fab-confirm').style.display = 'flex'; // 確定ボタン表示
+        window.scrollTo(0, 0);
+    }
+
+    function showHistoryView() {
+        document.getElementById('main-view').classList.remove('active');
+        document.getElementById('past-view').classList.add('active');
+        document.getElementById('fab-confirm').style.display = 'none'; // 確定ボタン非表示
+        renderPastOrders();
+        window.scrollTo(0, 0);
+    }
+
+    /* --- データ処理 --- */
     function renderMenu() {
         const container = document.getElementById('menu-container');
         container.innerHTML = '';
-
-        // データ構造化
         const structure = {};
         
         RAW_MENU_DATA.forEach((item, index) => {
             if (!structure[item.l]) structure[item.l] = {};
-            // 中分類が空の場合は空文字キーで保存
             const mKey = item.m || "";
             if (!structure[item.l][mKey]) structure[item.l][mKey] = [];
-            
             item.id = `menu-${index}`;
             structure[item.l][mKey].push(item);
         });
 
-        // DOM生成
         for (const [lCat, mCats] of Object.entries(structure)) {
             const lDiv = document.createElement('div');
             lDiv.className = 'accordion-l';
@@ -620,66 +811,34 @@
             lContent.className = 'accordion-content-l';
 
             const mKeys = Object.keys(mCats);
-            
-            // 中分類が1つだけで、かつ空文字の場合は、中分類アコーディオンを作らずにアイテムを表示
             if (mKeys.length === 1 && mKeys[0] === "") {
                 const items = mCats[""];
-                items.forEach(item => {
-                    lContent.appendChild(createItemElement(item));
-                });
+                items.forEach(item => lContent.appendChild(createItemElement(item)));
             } else {
-                // 中分類がある場合
                 for (const [mCat, items] of Object.entries(mCats)) {
                     const mDiv = document.createElement('div');
                     mDiv.className = 'accordion-m';
-
                     const mHeader = document.createElement('div');
                     mHeader.className = 'accordion-header-m';
-                    // 中分類名が空の場合は便宜上「その他」等は表示せず、空白のままにするか、デザイン調整
-                    // CSV通り、空の場合はヘッダーを表示せずアイテムだけ出すと崩れるので、名前を表示
                     mHeader.textContent = mCat === "" ? "一般メニュー" : mCat;
-                    
-                    mHeader.onclick = (e) => {
-                        e.stopPropagation();
-                        mDiv.classList.toggle('active');
-                    };
-
+                    mHeader.onclick = (e) => { e.stopPropagation(); mDiv.classList.toggle('active'); };
                     const mContent = document.createElement('div');
                     mContent.className = 'accordion-content-m';
-
-                    items.forEach(item => {
-                        mContent.appendChild(createItemElement(item));
-                    });
-
-                    mDiv.appendChild(mHeader);
-                    mDiv.appendChild(mContent);
-                    lContent.appendChild(mDiv);
+                    items.forEach(item => mContent.appendChild(createItemElement(item)));
+                    mDiv.appendChild(mHeader); mDiv.appendChild(mContent); lContent.appendChild(mDiv);
                 }
             }
-
-            lDiv.appendChild(lHeader);
-            lDiv.appendChild(lContent);
-            container.appendChild(lDiv);
+            lDiv.appendChild(lHeader); lDiv.appendChild(lContent); container.appendChild(lDiv);
         }
     }
 
-    /**
-     * 商品行のDOM要素を作成
-     */
     function createItemElement(item) {
         const el = document.createElement('div');
         el.className = 'menu-item';
-        el.dataset.name = item.n; // 検索用
-        
-        // 小分類があれば表示
+        el.dataset.name = item.n;
         const desc = item.s ? `<span class="item-desc">${item.s}</span>` : '';
-
         el.innerHTML = `
-            <div class="item-info">
-                ${desc}
-                <span class="item-name">${item.n}</span>
-                <div class="item-price">¥${item.p.toLocaleString()}</div>
-            </div>
+            <div class="item-info">${desc}<span class="item-name">${item.n}</span><div class="item-price">¥${item.p.toLocaleString()}</div></div>
             <div class="counter-control">
                 <button class="btn-circle" onclick="updateCount('${item.id}', -1)">-</button>
                 <span class="item-count" id="count-${item.id}">0</span>
@@ -689,34 +848,17 @@
         return el;
     }
 
-    /**
-     * カウントの増減
-     */
     function updateCount(id, delta) {
         const currentVal = orders[id] || 0;
         const newVal = currentVal + delta;
-
-        if (newVal < 0) return; // 0未満にはしない
-
+        if (newVal < 0) return;
         orders[id] = newVal;
-
-        // メインリストの表示更新
         const mainCounter = document.getElementById(`count-${id}`);
         if (mainCounter) mainCounter.textContent = orders[id];
-
-        // 検索結果の表示更新（もしあれば）
         const searchCounter = document.getElementById(`search-count-${id}`);
         if (searchCounter) searchCounter.textContent = orders[id];
-
-        // 検索結果更新時も履歴は「確定」を押すまで反映しないのが元の仕様だが、
-        // ユーザー体験のため、現在の合計を計算して表示するロジックを入れても良い。
-        // ここでは「確定ボタン」の重要性を維持するため、履歴再描画はしない。
     }
 
-    /**
-     * 検索機能
-     * ヒットしたものを別エリアに表示
-     */
     function handleSearch() {
         const text = document.getElementById('search-input').value.toLowerCase().trim();
         const resultsArea = document.getElementById('search-results-area');
@@ -729,31 +871,22 @@
             return;
         }
 
-        // 検索中
         resultsArea.style.display = 'block';
         menuContainer.classList.add('hidden');
         resultsList.innerHTML = '';
-
         let hits = 0;
+
         RAW_MENU_DATA.forEach(item => {
             if (item.n.toLowerCase().includes(text) || (item.m && item.m.includes(text))) {
                 hits++;
-                // 検索結果用の要素を作成（ID重複避けるためカウンターIDを変える）
                 const div = document.createElement('div');
                 div.className = 'menu-item';
                 div.style.background = '#fff';
                 div.style.borderBottom = '1px solid #eee';
-                
                 const desc = item.s ? `<span class="item-desc">${item.s}</span>` : '';
                 const currentCount = orders[item.id] || 0;
-
                 div.innerHTML = `
-                    <div class="item-info">
-                        <span style="font-size:0.8rem; color:#888;">${item.l}${item.m ? ' > '+item.m : ''}</span><br>
-                        ${desc}
-                        <span class="item-name">${item.n}</span>
-                        <div class="item-price">¥${item.p.toLocaleString()}</div>
-                    </div>
+                    <div class="item-info"><span style="font-size:0.8rem; color:#888;">${item.l}${item.m ? ' > '+item.m : ''}</span><br>${desc}<span class="item-name">${item.n}</span><div class="item-price">¥${item.p.toLocaleString()}</div></div>
                     <div class="counter-control">
                         <button class="btn-circle" onclick="updateCount('${item.id}', -1)">-</button>
                         <span class="item-count" id="search-count-${item.id}">${currentCount}</span>
@@ -763,15 +896,9 @@
                 resultsList.appendChild(div);
             }
         });
-
-        if (hits === 0) {
-            resultsList.innerHTML = '<div style="padding:10px; text-align:center; color:#666;">見つかりませんでした</div>';
-        }
+        if (hits === 0) resultsList.innerHTML = '<div style="padding:10px; text-align:center; color:#666;">見つかりませんでした</div>';
     }
 
-    /**
-     * 手入力アイテムの追加（即時反映）
-     */
     function addManualItem() {
         const name = document.getElementById('manual-name').value;
         const price = parseInt(document.getElementById('manual-price').value);
@@ -783,29 +910,17 @@
         }
 
         const id = `manual-${Date.now()}`;
-        manualOrders.push({
-            id: id,
-            name: name,
-            price: price,
-            quantity: count
-        });
+        manualOrders.push({ id: id, name: name, price: price, quantity: count });
 
-        // 入力クリア
         document.getElementById('manual-name').value = '';
         document.getElementById('manual-price').value = '';
         document.getElementById('manual-count').value = 1;
 
-        // 即保存して履歴更新
         saveData(); 
         renderHistory();
-        
-        // 画面を上部へスクロールして確認させる
         document.getElementById('history-section').scrollIntoView({ behavior: 'smooth' });
     }
 
-    /**
-     * 注文確定（メニューからの注文を保存）
-     */
     function confirmOrder() {
         saveData();
         renderHistory();
@@ -813,28 +928,129 @@
         document.getElementById('history-section').scrollIntoView({ behavior: 'smooth' });
     }
 
-    /**
-     * データ保存
-     */
+    /* --- 会計・共有機能 --- */
+
+    function generateOrderText(total, items) {
+        let text = "【ダリマ注文リスト】\n";
+        items.forEach(i => {
+            text += `・${i.name} × ${i.count} (¥${(i.price * i.count).toLocaleString()})\n`;
+        });
+        text += `\n合計金額: ¥${total.toLocaleString()}`;
+        return text;
+    }
+
+    function getCurrentOrderItems() {
+        let items = [];
+        let total = 0;
+        
+        RAW_MENU_DATA.forEach(item => {
+            const count = orders[item.id] || 0;
+            if (count > 0) {
+                total += item.p * count;
+                items.push({name: item.n, price: item.p, count: count});
+            }
+        });
+        manualOrders.forEach(item => {
+            if (item.quantity > 0) {
+                total += item.price * item.quantity;
+                items.push({name: item.name, price: item.price, count: item.quantity});
+            }
+        });
+        return { items, total };
+    }
+
+    async function shareOrder() {
+        const { items, total } = getCurrentOrderItems();
+        if (items.length === 0) {
+            alert('注文がありません');
+            return;
+        }
+        const text = generateOrderText(total, items);
+
+        // Web Share API (スマホ用)
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: '注文リスト',
+                    text: text
+                });
+            } catch (err) {
+                console.log('共有キャンセル', err);
+            }
+        } else {
+            // PC等用フォールバック: クリップボードコピー
+            copyToClipboard(text);
+        }
+    }
+
+    function copyToClipboard(text) {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('注文内容をコピーしました！\nLINEなどに貼り付けてください。');
+            });
+        } else {
+            // 古いブラウザ用
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            alert('注文内容をコピーしました！');
+        }
+    }
+
+    function checkoutOrder() {
+        const { items, total } = getCurrentOrderItems();
+        if (items.length === 0) {
+            alert('注文がありません');
+            return;
+        }
+
+        if (!confirm('会計済として処理しますか？\n\n・現在の注文内容は「過去の注文履歴」に移動します。\n・現在のカウンターはリセットされます。')) {
+            return;
+        }
+
+        // 履歴に追加
+        const historyRecord = {
+            date: new Date().toLocaleString('ja-JP'),
+            items: items,
+            total: total
+        };
+        pastOrders.unshift(historyRecord); // 先頭に追加
+
+        // 現在の状態をリセット
+        orders = {};
+        manualOrders = [];
+        
+        saveData(); // 保存（過去履歴含む）
+        
+        // UIリセット
+        document.querySelectorAll('.item-count').forEach(el => el.textContent = '0');
+        renderHistory();
+
+        alert('会計処理が完了しました。\nメニューの「過去の注文履歴」から確認できます。');
+    }
+
+    /* --- データ保存・読み込み --- */
+
     function saveData() {
         const data = {
             orders: orders,
-            manualOrders: manualOrders
+            manualOrders: manualOrders,
+            pastOrders: pastOrders
         };
         localStorage.setItem('dalimaOrderData', JSON.stringify(data));
     }
 
-    /**
-     * データ読み込み
-     */
     function loadData() {
         const json = localStorage.getItem('dalimaOrderData');
         if (json) {
             const data = JSON.parse(json);
             orders = data.orders || {};
             manualOrders = data.manualOrders || [];
+            pastOrders = data.pastOrders || [];
 
-            // カウンター表示復元
             for (const [id, count] of Object.entries(orders)) {
                 const el = document.getElementById(`count-${id}`);
                 if (el) el.textContent = count;
@@ -843,16 +1059,14 @@
         renderHistory();
     }
 
-    /**
-     * 履歴描画
-     */
+    /* --- 履歴描画 --- */
+
     function renderHistory() {
         const list = document.getElementById('history-list');
         list.innerHTML = '';
         let total = 0;
         let hasItem = false;
 
-        // メニューからの注文
         RAW_MENU_DATA.forEach(item => {
             const count = orders[item.id] || 0;
             if (count > 0) {
@@ -863,7 +1077,6 @@
             }
         });
 
-        // 手入力の注文
         manualOrders.forEach((item, index) => {
             if (item.quantity > 0) {
                 hasItem = true;
@@ -880,21 +1093,12 @@
         document.getElementById('grand-total').textContent = `合計: ¥${total.toLocaleString()}`;
     }
 
-    /**
-     * 履歴リスト要素生成
-     */
     function addItemToHistoryList(parent, name, price, count, sum, id, isManual) {
         const li = document.createElement('li');
         li.className = 'history-item';
-        
-        // 削除確認付きの更新関数を呼ぶ
         const updateFunc = isManual ? 'updateManualHistory' : 'updateMenuHistory';
-
         li.innerHTML = `
-            <div class="history-name">
-                ${name}<br>
-                <span style="font-size:0.8rem; color:#666; font-weight:normal;">@¥${price.toLocaleString()}</span>
-            </div>
+            <div class="history-name">${name}<br><span style="font-size:0.8rem; color:#666; font-weight:normal;">@¥${price.toLocaleString()}</span></div>
             <div class="history-details">
                 <div class="counter-control" style="background:none; padding:0; justify-content:flex-end;">
                      <button class="btn-circle" style="width:28px; height:28px; font-size:1rem; background:#ccc;" onclick="${updateFunc}('${id}', -1)">-</button>
@@ -907,72 +1111,93 @@
         parent.appendChild(li);
     }
 
-    /**
-     * 履歴内でのメニュー更新（削除確認あり）
-     */
     function updateMenuHistory(id, delta) {
         const current = orders[id] || 0;
         const next = current + delta;
-
         if (next <= 0) {
-            if (confirm('この商品を履歴から削除しますか？')) {
-                orders[id] = 0;
-            } else {
-                return; // キャンセルなら何もしない
-            }
+            if (!confirm('この商品を履歴から削除しますか？')) return;
+            orders[id] = 0;
         } else {
             orders[id] = next;
         }
-
-        // 表示同期
-        const el = document.getElementById(`count-${id}`);
-        if(el) el.textContent = orders[id];
-
+        document.getElementById(`count-${id}`).textContent = orders[id];
         saveData();
         renderHistory();
     }
 
-    /**
-     * 履歴内での手入力アイテム更新（削除確認あり）
-     */
     function updateManualHistory(index, delta) {
         const item = manualOrders[index];
         const next = item.quantity + delta;
-
         if (next <= 0) {
-            if (confirm('この手入力商品を履歴から削除しますか？')) {
-                item.quantity = 0;
-                // 配列からは消さない（IDズレ防止のためquantity=0で非表示にする運用）
-            } else {
-                return;
-            }
+            if (!confirm('この手入力商品を履歴から削除しますか？')) return;
+            item.quantity = 0;
         } else {
             item.quantity = next;
         }
-
         saveData();
         renderHistory();
     }
 
-    /**
-     * データリセット
-     */
     function resetAllData() {
-        if (confirm('本当に全てのデータを削除してよろしいですか？\nこの操作は取り消せません。')) {
+        if (confirm('本当に全てのデータ（過去の注文履歴含む）を削除してよろしいですか？')) {
             localStorage.removeItem('dalimaOrderData');
             orders = {};
             manualOrders = [];
-            
-            // UIリセット
+            pastOrders = [];
             document.querySelectorAll('.item-count').forEach(el => el.textContent = '0');
-            // 検索エリアリセット
             document.getElementById('search-input').value = '';
             handleSearch();
-            
             renderHistory();
             alert('リセットしました');
         }
     }
+
+    /* --- 過去の履歴画面 --- */
+    function renderPastOrders() {
+        const container = document.getElementById('past-list-container');
+        container.innerHTML = '';
+
+        if (pastOrders.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">保存された履歴はありません</p>';
+            return;
+        }
+
+        pastOrders.forEach((record, idx) => {
+            const block = document.createElement('div');
+            block.className = 'past-order-block';
+
+            // ヘッダー
+            const header = document.createElement('div');
+            header.className = 'past-order-header';
+            header.innerHTML = `<span>${record.date}</span><span>¥${record.total.toLocaleString()}</span>`;
+            header.onclick = () => {
+                document.getElementById(`past-content-${idx}`).classList.toggle('open');
+            };
+
+            // 内容
+            const content = document.createElement('div');
+            content.className = 'past-order-content';
+            content.id = `past-content-${idx}`;
+            
+            let html = '<ul style="list-style:none; padding:0;">';
+            record.items.forEach(item => {
+                html += `<li style="display:flex; justify-content:space-between; border-bottom:1px solid #f5f5f5; padding:5px 0;">
+                    <span>${item.name} x${item.count}</span>
+                    <span>¥${(item.price * item.count).toLocaleString()}</span>
+                </li>`;
+            });
+            html += '</ul>';
+            
+            // 再計算用合計（念のため）
+            html += `<div class="past-total">合計: ¥${record.total.toLocaleString()}</div>`;
+
+            content.innerHTML = html;
+            block.appendChild(header);
+            block.appendChild(content);
+            container.appendChild(block);
+        });
+    }
+
 </script>
 
 </body>
