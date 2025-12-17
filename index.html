@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="apple-touch-icon" href="https://via.placeholder.com/180/FF9800/FFFFFF?text=Dalima">
     <title>ダリマ注文カウンター</title>
     <style>
         :root {
@@ -132,7 +133,37 @@
             background: #f0f0f0;
         }
 
-        /* コンテナ */
+/* 追加：ガイド用モーダル */
+        #pwa-guide-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+            display: none; /* 初期状態では非表示 */
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        .guide-box {
+            background: #fff;
+            color: #333;
+            padding: 20px;
+            border-radius: 15px;
+            max-width: 300px;
+            position: relative;
+        }
+        .guide-box img {
+            width: 40px;
+            margin: 10px 0;
+        }
+        .guide-box b {
+            color: var(--primary-color);
+        }        
+
+
+/* コンテナ */
         .container {
             padding: 15px;
             max-width: 600px;
@@ -516,6 +547,31 @@
 </head>
 <body>
 
+
+<div id="pwa-guide-overlay" onclick="closeGuide()">
+    <div class="guide-box" onclick="event.stopPropagation()">
+        <h3>iPhoneをご利用の方</h3>
+        <p>ホーム画面に追加してアプリとして利用するには：</p>
+        <p>1. 下の<b>「共有ボタン」</b>をタップ</p>
+        <div style="font-size: 2rem;">⎋</div>
+        <p>2. メニューをスクロールして<br><b>「ホーム画面に追加」</b>を選択</p>
+        <div style="font-size: 2rem;">＋</div>
+        <button class="btn" style="background:var(--primary-color); color:white; margin-top:15px;" onclick="closeGuide()">閉じる</button>
+    </div>
+</div>
+
+<div id="side-menu-overlay" onclick="toggleMenu()"></div>
+<nav id="side-menu">
+    <div class="menu-header">メニュー</div>
+    <ul class="menu-list">
+        <li><button onclick="showMainView(); toggleMenu();">現在の注文入力</button></li>
+        <li><button onclick="showHistoryView(); toggleMenu();">過去の注文履歴</button></li>
+        <li><button onclick="showPWAGuide(); toggleMenu();" style="color: var(--accent-color); font-weight: bold;">ホーム画面にブックマーク</button></li>
+        <li><button onclick="toggleMenu()">閉じる</button></li>
+    </ul>
+</nav>
+
+
 <div id="side-menu-overlay" onclick="toggleMenu()"></div>
 <nav id="side-menu">
     <div class="menu-header">メニュー</div>
@@ -607,6 +663,16 @@
 </button>
 
 <script>
+/**
+     * 希望条件：ホーム画面追加案内
+     */
+    function showPWAGuide() {
+        document.getElementById('pwa-guide-overlay').style.display = 'flex';
+    }
+    
+    function closeGuide() {
+        document.getElementById('pwa-guide-overlay').style.display = 'none';
+    }
     /**
      * CSVデータ (前回から変更なし)
      */
